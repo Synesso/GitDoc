@@ -41,6 +41,7 @@ In this section very briefly (1 or 2 lines) describe what you've done in this tu
 - Researched stale SHA detection & auto-refresh. Designed polling-based approach using `GET /pulls/{n}` with ETag conditional requests (304s don't count against rate limits). Poll every 60s via SWR's `refreshInterval`. On SHA change: show a non-intrusive banner prompting user to refresh (don't auto-refresh to protect unsaved drafts and reading context). Designed full re-sync flow: save drafts → re-fetch content + diff → rebuild commentable lines → re-render → restore drafts. Evaluated and rejected webhooks/SSE for MVP (require server push infrastructure, GitHub has no public real-time API). Also handles PR closed/merged detection via `state` field.
 
 - Designed complete Next.js API route structure for the GitHub proxy layer. 12 routes total: 4 auth, 7 GitHub proxy, 1 content/image proxy. Designed shared helpers (`requireAuth()`, `githubFetch()`, `classifyGitHubError()`), middleware, standardised error format, request processing pipeline, and full route-by-route specification with request/response schemas.
+- Initialized Next.js project under `app/` directory using `create-next-app@latest` with App Router, TypeScript, Tailwind CSS v4, ESLint, Turbopack, and `src/` directory layout. Next.js 16.1.3, React 19.2.3. Updated metadata to GitDoc branding. Verified successful production build.
 
 # Things I've learned
 
