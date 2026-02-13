@@ -21,11 +21,11 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## GitHub API Proxy Layer
 
-- [ ] Create `lib/github.ts` with `githubFetch()` helper — handles Authorization header, ETag conditional requests, LRU cache, and response caching
-- [ ] Implement `classifyGitHubError()` — classifies GitHub HTTP errors into `validation`, `auth`, `rate_limit`, `transient`, `unknown` categories
-- [ ] Install `lru-cache` — bounded in-memory cache (~500 entries, ~50MB) for GitHub API responses
-- [ ] Forward `x-ratelimit-remaining` and `x-ratelimit-reset` headers to frontend on every proxy response — enables client-side rate limit monitoring
-- [ ] Create standardised error response format (`{ error, category, retryAfter?, details? }`) — consistent shape consumed by frontend `ApiError` class
+- [x] Create `lib/github.ts` with `githubFetch()` helper — handles Authorization header, ETag conditional requests, LRU cache, and response caching
+- [x] Implement `classifyGitHubError()` — classifies GitHub HTTP errors into `validation`, `auth`, `rate_limit`, `transient`, `unknown` categories
+- [x] Install `lru-cache` — bounded in-memory cache (~500 entries, ~50MB) for GitHub API responses
+- [x] Forward `x-ratelimit-remaining` and `x-ratelimit-reset` headers to frontend on every proxy response — enables client-side rate limit monitoring
+- [x] Create standardised error response format (`{ error, category, retryAfter?, details? }`) — consistent shape consumed by frontend `ApiError` class
 
 ## API Routes (GitHub Proxy)
 

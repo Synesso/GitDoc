@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Created `src/lib/github.ts` — GitHub API proxy layer with three exports: `githubFetch()` (handles Authorization header, ETag conditional requests via `If-None-Match`, LRU cache with `lru-cache` npm package at ~500 entries/50MB, configurable TTL per entry, supports both relative and absolute GitHub URLs), `classifyGitHubError()` (classifies HTTP errors into `validation`/`auth`/`rate_limit`/`transient`/`unknown` categories with SAML SSO detection and `retryAfter` computation), and `buildProxyResponse()` (forwards `x-ratelimit-remaining`/`x-ratelimit-reset` headers to frontend). Installed `lru-cache` dependency. Verified production build passes.
 - Created `src/middleware.ts` — Next.js middleware that intercepts all `/api/repos/*` requests and returns 401 JSON if the `gitdoc_session` cookie is absent. Optimistic auth gate that avoids running full route handlers for unauthenticated requests. Verified production build passes.
 - Created `GET /api/auth/me` route at `src/app/api/auth/me/route.ts`. Returns `{ login, avatarUrl, name }` from the session if authenticated, or 401 if not. Added `name` field to `SessionData` and updated the callback route to store `userData.name` from the GitHub user profile. Verified production build passes.
 - Created `GET /api/auth/logout` route at `src/app/api/auth/logout/route.ts`. Calls `session.destroy()` to clear the encrypted iron-session cookie, then redirects to `/`. Verified production build passes.
