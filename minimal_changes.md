@@ -6,7 +6,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 - [x] Initialize Next.js project with App Router, TypeScript, Tailwind CSS — the foundation for all routes and UI
 - [x] Install and configure shadcn/ui (Radix primitives) — provides Button, Card, Popover, Drawer, Collapsible, Avatar, Tooltip, Skeleton, Badge, ScrollArea, Dialog, Sonner, DropdownMenu, Textarea
-- [ ] Install `@tailwindcss/typography` plugin — provides `prose` classes so rendered markdown has proper heading/list/table styling
+- [x] Install `@tailwindcss/typography` plugin — provides `prose` classes so rendered markdown has proper heading/list/table styling
 - [ ] Set up environment variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `NEXT_PUBLIC_APP_URL`) — required for OAuth and session encryption
 
 ## Authentication
