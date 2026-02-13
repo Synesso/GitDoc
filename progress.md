@@ -44,6 +44,7 @@ In this section very briefly (1 or 2 lines) describe what you've done in this tu
 - Initialized Next.js project under `app/` directory using `create-next-app@latest` with App Router, TypeScript, Tailwind CSS v4, ESLint, Turbopack, and `src/` directory layout. Next.js 16.1.3, React 19.2.3. Updated metadata to GitDoc branding. Verified successful production build.
 - Installed and configured shadcn/ui via `npx shadcn@latest init` (new-york style, Tailwind v4, OKLCH colors). Added all 14 required components: Button, Card, Popover, Drawer (Vaul), Collapsible, Avatar, Tooltip, Skeleton, Badge, ScrollArea, Dialog, Sonner, DropdownMenu, Textarea. Dependencies installed: radix-ui, class-variance-authority, clsx, tailwind-merge, lucide-react, vaul, sonner, next-themes, tw-animate-css. Fixed duplicate `@apply` lines in globals.css. Verified successful production build.
 - Installed `@tailwindcss/typography` plugin as a dev dependency and added `@plugin "@tailwindcss/typography"` to `globals.css` (Tailwind v4 CSS-first config). Provides `prose` / `dark:prose-invert` / `prose-lg` classes for styling `react-markdown` output. Verified production build passes.
+- Set up environment variables: created `.env.local.example` with `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `NEXT_PUBLIC_APP_URL` (with generation instructions). Created `src/lib/env.ts` with lazy getter-based validation that throws descriptive errors on missing vars. `.env*` files already in `.gitignore`.
 
 # Things I've learned
 
