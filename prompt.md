@@ -8,6 +8,6 @@ Before beginning your work on a task, you must state the task you are working on
 
 After each small task you do, you should update the progress and learning document (@progress.md) with a brief description of what you've done and what you've learned if it will be relevant to future agents. You must also make updates to the todos in the design document so we don't redo complete work. Highly recommended that you add new areas of exploration required into tasks in the design document as you go along.
 
-After your single task you must make a 'jj commit'.
+After your single task you must make a 'jj describe' and a `jj new`.
 
-You must make use of the 'sq codesearch' cli command to search codebases for relevant information and you can use the gh cli to retrieve files of interest to read deeper.
+You must make use of the 'codesearch' mcp to search codebases for relevant information and you can use the gh cli to retrieve files of interest to read deeper.
