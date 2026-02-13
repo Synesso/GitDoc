@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Created `src/middleware.ts` — Next.js middleware that intercepts all `/api/repos/*` requests and returns 401 JSON if the `gitdoc_session` cookie is absent. Optimistic auth gate that avoids running full route handlers for unauthenticated requests. Verified production build passes.
 - Created `GET /api/auth/me` route at `src/app/api/auth/me/route.ts`. Returns `{ login, avatarUrl, name }` from the session if authenticated, or 401 if not. Added `name` field to `SessionData` and updated the callback route to store `userData.name` from the GitHub user profile. Verified production build passes.
 - Created `GET /api/auth/logout` route at `src/app/api/auth/logout/route.ts`. Calls `session.destroy()` to clear the encrypted iron-session cookie, then redirects to `/`. Verified production build passes.
 - Researched architecture options and GitHub API for PR review comments. Wrote initial architecture section in design.md covering stack (Next.js + react-markdown), API endpoints, auth model, and the critical diff-line constraint.
