@@ -32,7 +32,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Create `GET /api/repos/[owner]/[repo]/pulls` — lists open PRs with title, author, headSha, updatedAt, draft status
 - [x] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]` — returns PR detail (number, title, state, draft, headSha, baseSha)
 - [x] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/files` — lists changed files with patches, filtered server-side to `.md`/`.mdx` only
-- [ ] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/comments` (REST) — lists review comments, optional server-side `path` filter
+- [x] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/comments` (REST) — lists review comments, optional server-side `path` filter
 - [ ] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/comments` — creates a new PR review comment (maps camelCase body to GitHub's snake_case, adds `side: "RIGHT"`)
 - [ ] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/comments/[comment_id]/replies` — replies to an existing comment thread
 - [ ] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/head` — lightweight endpoint returning only headSha + state for stale-SHA polling
