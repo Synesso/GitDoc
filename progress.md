@@ -42,6 +42,7 @@ In this section very briefly (1 or 2 lines) describe what you've done in this tu
 
 - Designed complete Next.js API route structure for the GitHub proxy layer. 12 routes total: 4 auth, 7 GitHub proxy, 1 content/image proxy. Designed shared helpers (`requireAuth()`, `githubFetch()`, `classifyGitHubError()`), middleware, standardised error format, request processing pipeline, and full route-by-route specification with request/response schemas.
 - Initialized Next.js project under `app/` directory using `create-next-app@latest` with App Router, TypeScript, Tailwind CSS v4, ESLint, Turbopack, and `src/` directory layout. Next.js 16.1.3, React 19.2.3. Updated metadata to GitDoc branding. Verified successful production build.
+- Installed and configured shadcn/ui via `npx shadcn@latest init` (new-york style, Tailwind v4, OKLCH colors). Added all 14 required components: Button, Card, Popover, Drawer (Vaul), Collapsible, Avatar, Tooltip, Skeleton, Badge, ScrollArea, Dialog, Sonner, DropdownMenu, Textarea. Dependencies installed: radix-ui, class-variance-authority, clsx, tailwind-merge, lucide-react, vaul, sonner, next-themes, tw-animate-css. Fixed duplicate `@apply` lines in globals.css. Verified successful production build.
 
 # Things I've learned
 
