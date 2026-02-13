@@ -36,7 +36,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/comments` — creates a new PR review comment (maps camelCase body to GitHub's snake_case, adds `side: "RIGHT"`)
 - [x] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/comments/[comment_id]/replies` — replies to an existing comment thread
 - [x] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/head` — lightweight endpoint returning only headSha + state for stale-SHA polling
-- [ ] Create `GET /api/repos/[owner]/[repo]/contents/[...path]` — fetches file content at a specific ref, decodes base64 to UTF-8; doubles as image proxy for private repos (streams raw bytes with correct Content-Type for image extensions)
+- [x] Create `GET /api/repos/[owner]/[repo]/contents/[...path]` — fetches file content at a specific ref, decodes base64 to UTF-8; doubles as image proxy for private repos (streams raw bytes with correct Content-Type for image extensions)
 - [ ] Handle pagination for files and comments — GitHub caps at 100 per page; aggregate all pages before returning
 
 ## GraphQL Integration (Thread Resolution)
