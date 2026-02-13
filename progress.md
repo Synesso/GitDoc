@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Created `GET /api/auth/logout` route at `src/app/api/auth/logout/route.ts`. Calls `session.destroy()` to clear the encrypted iron-session cookie, then redirects to `/`. Verified production build passes.
 - Researched architecture options and GitHub API for PR review comments. Wrote initial architecture section in design.md covering stack (Next.js + react-markdown), API endpoints, auth model, and the critical diff-line constraint.
 - Researched diff-line mapping: how to fetch the diff via `GET /pulls/{n}/files` (returns `patch` field), parse it with `parse-diff` npm package, and build a set of commentable line numbers for each file.
 - Researched source-line tracking: traced how position data flows through the unified pipeline (mdast → hast → React), designed a `rehype-source-lines` plugin to attach `data-source-start`/`data-source-end` attributes to rendered DOM elements.

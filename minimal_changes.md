@@ -15,7 +15,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Create `lib/session.ts` with `getSession()` and `requireAuth()` helpers — shared session access for all API routes
 - [x] Create `GET /api/auth/login` route — generates `state` param, stores in cookie, redirects to GitHub OAuth authorize URL
 - [x] Create `GET /api/auth/callback` route — exchanges `code` for access token, stores token in `iron-session` cookie, redirects to app
-- [ ] Create `GET /api/auth/logout` route — calls `session.destroy()`, redirects to `/`
+- [x] Create `GET /api/auth/logout` route — calls `session.destroy()`, redirects to `/`
 - [ ] Create `GET /api/auth/me` route — returns current user's GitHub profile (login, avatar, name) from session
 - [ ] Create `middleware.ts` — optimistic auth gate on `/api/repos/*` that short-circuits with 401 if session cookie is absent
 
