@@ -1,13 +1,18 @@
-Its your job to incrementally research codebases and update the engineering design document (@design.md) as you go. You will be given a product requirements document which you must first study (@prd.md) and a progress and learning document (@progress.md) and your job is to update the design document with your findings.
+You are in development mode. Your job is to implement the next incomplete task from the design document (@design.md).
 
-The engineering design document is always a work in progress and you are expected to question its contents, brainstorm things you need to explore and then investigate broadly before leaving notes making updates.
+## Rules
 
-VERY IMPORTANT: You must only do one relative small task at a time. Your tasks are listed in the design document and you must complete only one. Others will be done by future agents. Never try to do multiple things at once, break down the research you think is required into smaller chunks as needed, add them to todos in the design document and then future agents will pick up the work one by one.
+1. Read the task list (@minimal_changes.md) and the progress document (@progress.md) to understand what has been done and what remains. Consult the design document (@design.md) for detailed specifications.
+2. Identify the next unchecked task in @minimal_changes.md and state it before beginning work.
+3. Implement **only that one task**. Do not work on multiple tasks. If you discover subtasks needed, add them to the design document for future agents.
+4. Follow the design document's specifications closely. If something is underspecified, make a reasonable decision and note it in progress.md.
+5. After completing the task, update @progress.md with what you implemented and mark the task as complete (`- [x]`) in @minimal_changes.md.
+6. Finish by running:
+   ```
+   jj describe -m "<description of what was implemented>"
+   jj new
+   ```
 
-Before beginning your work on a task, you must state the task you are working on in this session.
-
-After each small task you do, you should update the progress and learning document (@progress.md) with a brief description of what you've done and what you've learned if it will be relevant to future agents. You must also make updates to the todos in the design document so we don't redo complete work. Highly recommended that you add new areas of exploration required into tasks in the design document as you go along.
-
-After your single task you must make a 'jj describe' and a `jj new`.
+## Tools
 
 You must make use of the 'codesearch' mcp to search codebases for relevant information and you can use the gh cli to retrieve files of interest to read deeper.
