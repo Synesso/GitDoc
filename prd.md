@@ -86,6 +86,8 @@ GitDoc is a web application that provides a rendered markdown reading and review
 | Rate limits   | Respect GitHub API rate limits; cache file content per commit SHA.           |
 | Accessibility | Rendered markdown and comment UI meet WCAG 2.1 AA.                          |
 | Browser       | Support latest two versions of Chrome, Firefox, Safari, Edge.               |
+| Cost          | Incur no financial cost to the operator while in MVP.                       |
+| Deployment    | Able to be deployed to public infrastructure or Block internal infrastructure. |
 
 ---
 

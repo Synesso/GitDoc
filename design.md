@@ -3481,6 +3481,177 @@ Using shadcn/ui components:
 7. Updates: SWR polling + optimistic updates on new comment/reply
 ```
 
+## Outdated Comment Handling
+
+### What Makes a Comment "Outdated"
+
+When new commits are pushed to a PR branch (including force-pushes), existing review comments may become **outdated** — their target lines no longer exist in the current diff, or the code at those lines has changed. GitHub tracks this with several fields on the review comment object.
+
+### Key API Fields (REST)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `commit_id` | `string` | The SHA of the **current** commit to which GitHub has mapped this comment. Updated when new commits are pushed. |
+| `original_commit_id` | `string` | The SHA of the commit on which the comment was **originally created**. Never changes. |
+| `line` | `number \| null` | The line number in the **current** diff where the comment has been remapped. **`null` when the comment is outdated** — GitHub couldn't find a corresponding line in the new diff. |
+| `original_line` | `number` | The line number in the original diff where the comment was placed. Never changes. Always present. |
+| `start_line` | `number \| null` | For multi-line comments, the start line in the current diff. `null` if outdated. |
+| `original_start_line` | `number \| null` | For multi-line comments, the original start line. Never changes. |
+| `position` | `number \| null` | (Deprecated) Diff-relative position. `null` when outdated. |
+| `original_position` | `number` | (Deprecated) Original diff-relative position. Never changes. |
+| `diff_hunk` | `string` | The diff hunk context from the **original** commit, preserved even when outdated. Useful for showing what the code looked like when the comment was made. |
+
+### Detecting Outdated Comments (REST API)
+
+A comment is **outdated** when any of these conditions are true:
+
+1. **`line` is `null`**: GitHub couldn't map the comment to the current diff. This is the primary signal.
+2. **`commit_id !== original_commit_id`** AND **`line` is `null`**: The PR has been updated and GitHub lost the mapping. If `commit_id !== original_commit_id` but `line` is still a number, GitHub successfully remapped the comment to the new diff — it's NOT outdated, just moved.
+3. **Comment references lines no longer in the current `commentableLines` set**: Even if `line` is non-null, it may point to a line that's outside the current diff (GitHub's remapping is heuristic). Cross-reference with our `commentableLines` set to confirm.
+
+```ts
+interface ReviewComment {
+  id: number;
+  inReplyToId: number | null;
+  path: string;
+  line: number | null;           // null = outdated
+  startLine: number | null;
+  originalLine: number;          // always present
+  originalStartLine: number | null;
+  commitId: string;
+  originalCommitId: string;
+  side: 'LEFT' | 'RIGHT';
+  body: string;
+  user: { login: string; avatarUrl: string; htmlUrl: string };
+  createdAt: string;
+  authorAssociation: string;
+  htmlUrl: string;
+  diffHunk: string;              // original diff context
+}
+
+function isOutdated(comment: ReviewComment): boolean {
+  return comment.line === null;
+}
+```
+
+**Note**: The existing `ReviewComment` interface in the Comment Threading section needs to be updated to include `line: number | null` (nullable), plus `originalLine`, `originalCommitId`, `commitId`, and `diffHunk`.
+
+### GraphQL Alternative: `isOutdated` Boolean
+
+The GraphQL API provides explicit outdated tracking on both `PullRequestReviewThread` and `PullRequestReviewComment`:
+
+- **`PullRequestReviewThread.isOutdated`** (`Boolean!`): *"Indicates whether this thread was outdated by newer changes."* — authoritative, set by GitHub.
+- **`PullRequestReviewComment.outdated`** (`Boolean!`): *"Identifies when the comment body is outdated."* — per-comment outdated flag.
+- **`PullRequestReviewThread.line`** (`Int`): Current line — `null` when outdated (same as REST).
+- **`PullRequestReviewThread.originalLine`** (`Int`): Original line — always present.
+
+If/when we add GraphQL integration (see the exploration task on thread resolution), the `isOutdated` boolean is the most reliable signal. For REST-only MVP, `line === null` is the equivalent.
+
+### Thread-Level Outdated Classification
+
+Outdated status is per-**thread**, not per-comment. All replies in a thread share the same outdated status (they inherit from the top-level comment's `line` value). In `buildCommentThreads()`:
+
+```ts
+interface CommentThread {
+  id: number;
+  path: string;
+  line: number | null;         // null = outdated thread
+  startLine: number | null;
+  originalLine: number;        // for approximate positioning of outdated threads
+  originalStartLine: number | null;
+  comments: ReviewComment[];
+  isResolved: boolean;
+  isOutdated: boolean;         // derived from line === null
+}
+```
+
+### Display Strategy for Outdated Threads
+
+#### Principle: Show But De-emphasize
+
+Outdated comments are still valuable — they represent reviewer feedback that may or may not have been addressed. Hiding them entirely loses context. But they should not distract from current, actionable comments.
+
+#### Visual Treatment
+
+1. **Collapsed by default**: Outdated threads show as a single-line summary (author avatar + "Outdated comment" label + expand toggle). Collapsed height ~40px vs ~100–150px for active threads.
+
+2. **Visual dimming**: Reduced opacity (`opacity: 0.6`) and an "Outdated" badge (shadcn `Badge` with a muted/secondary variant).
+
+3. **No passage highlighting**: Since the original line may not exist in the current file, don't attempt to highlight a passage in the document. The thread card appears in the sidebar without a passage link.
+
+4. **Original diff context**: On expand, show the `diff_hunk` from the original comment as a code block above the comment body. This gives the reader context about what code the comment was referring to, even though that code may have changed.
+
+```
+┌─────────────────────────────────────────┐
+│ 👤 octocat  •  Outdated  •  2 replies   │  ← collapsed (default)
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ 👤 octocat  •  Outdated  •  Jan 15      │  ← expanded
+│                                         │
+│ ┌─ Original diff context ────────────┐  │
+│ │ @@ -16,7 +16,7 @@                  │  │
+│ │  unchanged line                     │  │
+│ │ +modified line was here             │  │
+│ └────────────────────────────────────┘  │
+│                                         │
+│ "This paragraph needs a clearer topic   │
+│  sentence."                             │
+│                                         │
+│ ▸ 2 replies                             │
+│                                         │
+│ [Open in GitHub ↗]                      │
+└─────────────────────────────────────────┘
+```
+
+#### Positioning in the Sidebar
+
+Since outdated threads have `line: null`, we can't anchor them to a specific source line in the rendered document. Options:
+
+1. **Approximate positioning using `originalLine`**: Try to find a DOM element near `originalLine` in the current rendered document. If the file hasn't changed dramatically, this may still be approximately correct. If no element matches (the line was deleted), fall back to option 2.
+
+2. **Group at the bottom of the sidebar**: Place all outdated threads in a separate "Outdated Comments" section at the bottom of the comment sidebar, below active threads. This is the simplest and most predictable approach.
+
+3. **Sort chronologically within the outdated section**: Since we can't position by line, sort outdated threads by `createdAt` (oldest first).
+
+**Recommendation**: Use option 2 (separate section at bottom) for MVP. The approximate positioning in option 1 is unreliable — if the file has been significantly rewritten, `originalLine` could correspond to entirely different content, creating misleading visual associations.
+
+```
+┌─────────────────────────────┐
+│  Comment Sidebar             │
+│                              │
+│  [Active thread @ line 5]    │
+│  [Active thread @ line 22]   │
+│  [Active thread @ line 48]   │
+│                              │
+│  ── Outdated Comments (3) ── │
+│                              │
+│  [Outdated thread, collapsed]│
+│  [Outdated thread, collapsed]│
+│  [Outdated thread, collapsed]│
+│                              │
+└─────────────────────────────┘
+```
+
+#### Replying to Outdated Threads
+
+Users can still reply to outdated threads via the GitHub API (`POST /pulls/{n}/comments/{id}/replies` — only requires `body`, no `commit_id` or `line`). The reply endpoint works regardless of whether the parent comment is outdated. GitDoc should allow replies to outdated threads — the reviewer may want to confirm the issue was addressed or ask for clarification.
+
+#### Edge Cases
+
+- **File renamed or deleted**: If the PR renames a file, comments on the old filename may still appear in the API response with the old `path`. Filter by the current file path — these won't match and won't be shown. This is acceptable; the user can see them on GitHub's PR page.
+- **Comment becomes "un-outdated"**: If a force-push restores the original line, `line` may become non-null again. Handle this naturally — the comment re-enters the active thread list on the next data fetch.
+- **All comments are outdated**: If a massive rewrite makes every comment outdated, the "Outdated Comments" section becomes the only visible comment area. This is correct behavior — it signals that all previous feedback needs re-evaluation.
+- **Mix of outdated and active in the same thread**: This shouldn't happen with the REST API model — `line` is on the top-level comment, and all replies share the thread's position. But if it does occur (e.g., a reply was made after the thread became outdated), the thread's outdated status is determined by the top-level comment's `line` value.
+
+### Integration with Existing Systems
+
+- **`buildCommentThreads()`**: Update to set `isOutdated: comment.line === null` on each thread. Separate the return value into active threads (sorted by `line`) and outdated threads (sorted by `createdAt`).
+- **Thread layout algorithm**: Only run `layoutThreadCards()` on active (non-outdated) threads. Outdated threads use a simple vertical stack in their separate section.
+- **Hover sync**: No hover-to-highlight-passage for outdated threads (no valid passage to highlight). Hovering on an outdated thread card does nothing in the document. The reverse direction (hover passage → highlight thread) naturally excludes outdated threads since they have no `line` to match.
+- **SWR/caching**: Outdated status can change when the head SHA changes (stale SHA detection). On SHA change and re-fetch, threads may transition between active and outdated states.
+- **Mobile (drawer)**: Outdated threads appear in a collapsible section within the bottom drawer, below active threads.
+
 # Things to Explore
 - [x] What should be the architecture of the service?
 - [x] Where will it be deployed? — Vercel recommended (zero-config Next.js, serverless, preview deploys). Docker standalone as self-hosted fallback. No Block-internal infrastructure dependency identified.
@@ -3506,5 +3677,5 @@ Using shadcn/ui components:
 - [x] Stale SHA detection & auto-refresh: Designed polling-based detection using `GET /pulls/{n}` with ETag conditional requests (304s are free against rate limits). Poll every 60s, compare `head.sha` against stored value. On change: show a non-intrusive banner prompting the user to refresh (don't auto-refresh — user may have unsaved comment drafts). On refresh: re-fetch file content + diff, rebuild `commentableLines` set, preserve comment drafts in `sessionStorage`. Webhooks/SSE rejected for MVP — require server infrastructure and don't work for pure-client apps. See Stale SHA Detection section in design doc.
 - [x] Next.js API route structure: defined complete set of API routes — 4 auth routes, 7 GitHub proxy routes (PR list, PR detail, files, comments GET/POST, replies POST, SHA polling), 1 content/image proxy route. Designed shared `requireAuth()` helper, `githubFetch()` with ETag caching, `classifyGitHubError()` for standardised error responses. Middleware optimistically gates `/api/repos/*` on session cookie presence. All errors use `{ error, category, retryAfter?, details? }` format matching the frontend `ApiError` class. Response shapes transform GitHub snake_case to camelCase. See Next.js API Route Structure section in design doc.
 - [x] Comment threading & display: designed how to group flat GitHub review comments into threaded conversations (using `in_reply_to_id`), position them in the right margin aligned with their target source lines, handle overlapping thread positions with a push-apart layout algorithm, and manage scroll-sync between document passages and comment threads. Key finding: REST API has no "resolved" state — only available via GraphQL `PullRequestReviewThread.isResolved`. MVP uses REST-only. See Comment Threading & Display section.
-- [ ] Outdated comment handling: design how to detect and display comments on lines that no longer exist after force-pushes (comments with `line: null` or where `original_commit_id !== commit_id`). Include visual treatment (dimmed/collapsed section), and whether to use `original_line`/`original_commit_id` for approximate positioning.
+- [x] Outdated comment handling: Designed detection (`line === null` in REST API is the primary signal), updated `ReviewComment` interface with `originalLine`, `originalCommitId`, `commitId`, `diffHunk` fields. GraphQL alternative: `PullRequestReviewThread.isOutdated` boolean. Display: outdated threads collapsed by default in separate "Outdated Comments" section at bottom of sidebar (not approximate-positioned — unreliable). Show original `diff_hunk` as code block on expand for context. Visual: dimmed (`opacity: 0.6`) + "Outdated" badge. Replies to outdated threads still work via the reply endpoint. See Outdated Comment Handling section.
 - [ ] GraphQL integration for thread resolution state: design how to fetch `PullRequestReviewThread.isResolved` via GraphQL, cross-reference with REST comment IDs (GraphQL `databaseId` = REST `id`), and implement resolve/unresolve actions in the UI. Evaluate whether to replace REST comments endpoint entirely with GraphQL.
