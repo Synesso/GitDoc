@@ -3152,6 +3152,335 @@ Both paths converge on the same re-sync logic. The proactive path is better UX b
 - **Webhook-based push notification**: If GitDoc migrates to a GitHub App, register for `push` webhooks and forward to the client via SSE. This would reduce detection latency from 60s to near-real-time.
 - **Incremental re-sync**: Instead of re-fetching everything, diff the old and new file lists to determine which files changed. Only re-fetch content/diff for changed files.
 
+## Comment Threading & Display
+
+### GitHub API Data Model for Comment Threads
+
+GitHub's REST API returns PR review comments as a **flat list** — there is no "thread" or "conversation" grouping object. Threading is inferred from the `in_reply_to_id` field:
+
+- **Top-level comments**: Have `in_reply_to_id: null` (or absent). These anchor a thread to a specific file + line range.
+- **Reply comments**: Have `in_reply_to_id` set to the ID of the top-level comment they reply to.
+- **Single-level only**: Replies to replies are NOT supported by the API. All replies point directly to the top-level comment, not to intermediate replies.
+
+Key fields from `GET /repos/{owner}/{repo}/pulls/{pull_number}/comments`:
+
+| Field | Purpose |
+|-------|---------|
+| `id` | Unique comment ID |
+| `in_reply_to_id` | ID of top-level comment (null if this IS the top-level) |
+| `path` | File path in the repo |
+| `line` | End line of the comment range (in the head-ref file) |
+| `start_line` | Start line for multi-line comments (null for single-line) |
+| `side` | `RIGHT` (new file) or `LEFT` (old file) — GitDoc always uses `RIGHT` |
+| `body` | Comment text (markdown) |
+| `user` | Author info (login, avatar_url, html_url) |
+| `created_at` | ISO timestamp |
+| `updated_at` | ISO timestamp |
+| `pull_request_review_id` | ID of the formal review this comment belongs to (null for standalone) |
+| `author_association` | `OWNER`, `COLLABORATOR`, `CONTRIBUTOR`, `NONE`, etc. |
+| `reactions` | Reaction counts (+1, -1, heart, etc.) |
+| `html_url` | Link to the comment on GitHub (for "Open in GitHub" link) |
+
+### Thread Resolution State
+
+**Critical finding**: The REST API has **no field** for whether a comment thread is resolved. The "resolved" state is a property of `PullRequestReviewThread`, which only exists in the **GraphQL API**:
+
+```graphql
+query {
+  repository(owner: "owner", name: "repo") {
+    pullRequest(number: 42) {
+      reviewThreads(last: 100) {
+        nodes {
+          id
+          isResolved
+          resolvedBy { login }
+          comments(first: 100) {
+            nodes {
+              id          # GraphQL node_id — NOT the same as REST id
+              databaseId  # This IS the REST API id
+              body
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The GraphQL `PullRequestReviewThread` groups comments into threads (similar to our client-side grouping) and adds `isResolved` / `resolvedBy`. The `resolveReviewThread` and `unresolveReviewThread` mutations toggle this state.
+
+**Options for GitDoc**:
+1. **REST-only (MVP)**: Don't show resolved state. All threads appear the same. Users can resolve/unresolve on GitHub directly. Simple.
+2. **GraphQL hybrid**: Fetch `reviewThreads` via GraphQL to get `isResolved` + the mapping from thread → comment IDs. Cross-reference with REST comment data. This lets us show collapsed/dimmed resolved threads and offer resolve/unresolve actions.
+3. **GraphQL-first**: Fetch all comment data via GraphQL instead of REST. More complex query but gets threading + resolution in one call.
+
+**Recommendation**: Start with REST-only for MVP. Thread grouping is purely client-side via `in_reply_to_id`. Add GraphQL resolution state as a post-MVP enhancement — it requires adding a GraphQL client (e.g., `@octokit/graphql` or raw `fetch`) and managing a second data source.
+
+### Building Comment Threads from Flat API Response
+
+```ts
+interface ReviewComment {
+  id: number;
+  inReplyToId: number | null;
+  path: string;
+  line: number;
+  startLine: number | null;
+  side: 'LEFT' | 'RIGHT';
+  body: string;
+  user: { login: string; avatarUrl: string; htmlUrl: string };
+  createdAt: string;
+  authorAssociation: string;
+  htmlUrl: string;
+}
+
+interface CommentThread {
+  id: number;           // ID of the top-level comment (thread anchor)
+  path: string;
+  line: number;         // End line — used for vertical positioning
+  startLine: number | null;
+  comments: ReviewComment[];  // Sorted by createdAt ascending
+  isResolved: boolean;  // Always false for REST-only MVP
+}
+
+function buildCommentThreads(
+  comments: ReviewComment[],
+  filePath: string,
+): CommentThread[] {
+  // Filter to current file, RIGHT side only
+  const fileComments = comments.filter(
+    c => c.path === filePath && c.side === 'RIGHT'
+  );
+
+  const byId = new Map(fileComments.map(c => [c.id, c]));
+  const threads = new Map<number, CommentThread>();
+
+  // Pass 1: Create threads from top-level comments
+  for (const comment of fileComments) {
+    if (!comment.inReplyToId) {
+      threads.set(comment.id, {
+        id: comment.id,
+        path: comment.path,
+        line: comment.line,
+        startLine: comment.startLine,
+        comments: [comment],
+        isResolved: false,
+      });
+    }
+  }
+
+  // Pass 2: Attach replies to their parent thread
+  for (const comment of fileComments) {
+    if (comment.inReplyToId) {
+      const thread = threads.get(comment.inReplyToId);
+      if (thread) {
+        thread.comments.push(comment);
+      }
+      // If parent not found (e.g., parent is on LEFT side or different file),
+      // the reply is orphaned — skip it silently.
+    }
+  }
+
+  // Sort comments within each thread by creation time
+  for (const thread of threads.values()) {
+    thread.comments.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }
+
+  // Return threads sorted by line number (top of document first)
+  return Array.from(threads.values()).sort((a, b) => a.line - b.line);
+}
+```
+
+### Edge Cases in Thread Building
+
+- **Orphaned replies**: A reply whose `in_reply_to_id` refers to a comment on a different file or on `side: "LEFT"`. These should be silently ignored (they won't appear in the current file view).
+- **Comments on outdated commits**: If the PR has been force-pushed, some comments may reference `original_commit_id` / `original_line` that no longer correspond to the current file. GitHub still returns them in the comments list, with their `line` updated to the nearest equivalent in the current diff. If `line` is `null` (comment is "outdated" / can't be mapped), treat the thread as "outdated" and show it in a separate section or dimmed.
+- **File-level comments**: Comments with `subject_type: "file"` (no line number) are attached to the file as a whole, not a specific line. Show these at the top of the comment sidebar.
+- **Multiple threads on the same line**: Two independent threads can target the same line. Each gets its own thread card in the sidebar.
+- **Very long threads**: A thread with many replies (10+) should be collapsed by default, showing the first comment + reply count, with an expand/collapse toggle.
+
+### Positioning Threads in the Right Margin
+
+The core UX requirement (from the PRD) is Google Docs-style: each comment thread appears in the right margin, vertically aligned with the passage it references. This creates a "visual link" between content and commentary.
+
+#### Desired Anchor Position
+
+For a thread targeting `line` (or `startLine` to `line`), the anchor position in the margin is the **vertical center** of the DOM element(s) that correspond to those source lines.
+
+```ts
+function getThreadAnchorY(thread: CommentThread): number | null {
+  // Find the DOM element for the thread's target line
+  const targetEl = document.querySelector(
+    `[data-source-start="${thread.startLine ?? thread.line}"]`
+  );
+  if (!targetEl) return null;
+
+  const rect = targetEl.getBoundingClientRect();
+  // Return position relative to the markdown container, not viewport
+  const containerRect = markdownContainerRef.current?.getBoundingClientRect();
+  if (!containerRect) return null;
+
+  return rect.top - containerRect.top + rect.height / 2;
+}
+```
+
+#### The Overlap Problem
+
+When multiple threads target nearby lines, their desired anchor positions may overlap vertically. A thread card is typically 80–150px tall (one comment with avatar + body + reply count). If three threads target consecutive lines, their cards would overlap.
+
+#### Recommended Layout Algorithm: Push-Apart (Gravity + Constraints)
+
+The approach used by Google Docs and similar tools:
+
+1. **Compute desired positions**: For each thread, calculate the ideal Y position from the DOM element's position (as above).
+2. **Sort by desired Y**: Process threads from top to bottom.
+3. **Apply minimum gap constraint**: Each thread card must not overlap the previous one. If a thread's desired Y would place it above `previousCardBottom + GAP`, use the desired Y. Otherwise, push it down to `previousCardBottom + GAP`.
+4. **Connect with leader lines**: If a thread card is pushed away from its desired anchor, draw a subtle line/connector from the passage highlight to the card's position in the margin.
+
+```ts
+const MIN_CARD_GAP = 8; // px between thread cards
+const ESTIMATED_CARD_HEIGHT = 100; // px — refine with actual measurements
+
+interface PositionedThread {
+  thread: CommentThread;
+  desiredY: number;    // Ideal vertical position (from DOM element)
+  actualY: number;     // Final position after overlap resolution
+  displaced: boolean;  // True if pushed away from desired position
+}
+
+function layoutThreadCards(
+  threads: CommentThread[],
+): PositionedThread[] {
+  const positioned: PositionedThread[] = threads
+    .map(thread => ({
+      thread,
+      desiredY: getThreadAnchorY(thread) ?? 0,
+      actualY: 0,
+      displaced: false,
+    }))
+    .filter(p => p.desiredY > 0)
+    .sort((a, b) => a.desiredY - b.desiredY);
+
+  let nextAvailableY = 0;
+
+  for (const item of positioned) {
+    if (item.desiredY >= nextAvailableY) {
+      // No overlap — use desired position
+      item.actualY = item.desiredY;
+    } else {
+      // Overlap — push down
+      item.actualY = nextAvailableY;
+      item.displaced = true;
+    }
+    nextAvailableY = item.actualY + ESTIMATED_CARD_HEIGHT + MIN_CARD_GAP;
+  }
+
+  return positioned;
+}
+```
+
+**Refinement**: Use actual measured card heights (via `ResizeObserver` or refs) instead of estimated heights. Run the layout in a `useLayoutEffect` after render to measure, then set positions. This may cause a second render pass — acceptable for correct layout.
+
+#### Leader Lines for Displaced Threads
+
+When a thread card is pushed below its desired anchor, the visual connection to the passage is weakened. Draw a subtle leader line (or a thin border-left "rail") connecting the passage highlight to the card:
+
+```
+  │  This paragraph was modified...  ─────────────────╮
+  │  More changed text here.                          │
+                                                      │  ┌──────────────┐
+                                                      ╰──│ Thread card 1│
+                                                         └──────────────┘
+  │  Another changed passage...      ─────────────────╮
+                                                      │  ┌──────────────┐
+                                                      ╰──│ Thread card 2│
+                                                         └──────────────┘
+```
+
+**Implementation**: Use an SVG overlay or CSS `:before` pseudo-elements to draw the connector. An SVG overlay is simpler for curved/diagonal lines; CSS borders work for straight horizontal-then-vertical connectors.
+
+For MVP, a simple approach: if `displaced`, show a small left-pointing triangle/caret on the card pointing back toward the document at the desired Y position. Skip full leader lines initially — they add visual complexity.
+
+### Scroll Synchronisation
+
+Two sync behaviors are needed:
+
+#### 1. Hover sync (bidirectional highlighting)
+
+From the PRD: *"Hovering over a comment thread highlights the referenced passage in the document, and vice-versa."*
+
+- **Hover on thread card → highlight passage**: On `mouseenter` of a thread card, add a highlight class to the DOM elements whose `data-source-start`/`data-source-end` overlap with the thread's `startLine..line` range.
+- **Hover on passage → highlight thread card**: On `mouseenter` of a `[data-commentable]` element that has associated threads, add a highlight class to the corresponding thread card(s) in the sidebar.
+
+```css
+.passage-highlighted {
+  background-color: var(--highlight-hover-bg); /* e.g., yellow-100/20% */
+  transition: background-color 150ms;
+}
+
+.thread-card-highlighted {
+  outline: 2px solid var(--accent-color);
+  transition: outline 150ms;
+}
+```
+
+The mapping from passage → thread is: find all threads where the thread's `[startLine, line]` range overlaps the element's `[data-source-start, data-source-end]` range. Pre-compute this mapping on render to avoid per-hover DOM queries.
+
+#### 2. Click-to-scroll sync
+
+- **Click on thread card → scroll passage into view**: Scroll the markdown content area so the target passage is visible, then apply the highlight momentarily (1–2 seconds, then fade).
+- **Click on passage comment indicator → scroll thread into view**: Scroll the sidebar so the thread card is visible, then highlight it momentarily.
+
+Use `element.scrollIntoView({ behavior: 'smooth', block: 'center' })` for both directions. The `block: 'center'` option centers the target in the viewport rather than snapping to the top.
+
+#### Scroll-position sync (NOT recommended)
+
+Locking the sidebar scroll to the document scroll (so both scroll together in a synchronized manner) is tempting but problematic:
+- The comment sidebar and document content have different total heights (document is taller if it has few comments, or shorter if it has many).
+- A locked scroll ratio creates a confusing non-linear relationship between positions.
+- Google Docs does NOT do scroll-position sync — comments are positioned via the push-apart algorithm and scroll independently.
+
+**Recommendation**: The sidebar scrolls independently. Hover sync and click-to-scroll provide the connection. This is how Google Docs and GitHub's own comment sidebar work.
+
+### Re-layout on Scroll / Resize
+
+The thread card positions depend on the rendered DOM positions of content elements. These positions change when:
+- The user scrolls the document (viewport-relative positions shift — but container-relative positions are stable).
+- The browser window is resized (reflow may change element positions).
+- An image loads (shifts content below it).
+- A collapsible section is expanded/collapsed.
+
+**Approach**: Compute positions relative to the markdown container (not viewport). Use `ResizeObserver` on the markdown container to re-trigger layout on size changes. Debounce relayout to avoid excessive recalculation. Memoize thread positions with the document content hash + container width as cache keys.
+
+### Thread Display Components
+
+Using shadcn/ui components:
+
+| Component | Usage |
+|-----------|-------|
+| `Card` | Each thread card container |
+| `Avatar` | User avatar from GitHub (`user.avatar_url`) |
+| `Collapsible` | Expand/collapse long threads (>2 replies) |
+| `Textarea` | Reply input |
+| `Button` | Submit reply, expand/collapse |
+| `Tooltip` | "Open in GitHub" link, author info |
+| `ScrollArea` | Sidebar scroll container |
+| `Badge` | Reply count, "outdated" indicator |
+
+### Data Flow Summary
+
+```
+1. Fetch comments: GET /api/repos/{o}/{r}/pulls/{n}/comments
+2. Transform: snake_case → camelCase (in API proxy)
+3. Group: buildCommentThreads(comments, currentFilePath)
+4. Position: layoutThreadCards(threads) using DOM element positions
+5. Render: Thread cards in the right sidebar, positioned absolutely
+6. Sync: Hover highlighting + click-to-scroll between content and threads
+7. Updates: SWR polling + optimistic updates on new comment/reply
+```
+
 # Things to Explore
 - [x] What should be the architecture of the service?
 - [x] Where will it be deployed? — Vercel recommended (zero-config Next.js, serverless, preview deploys). Docker standalone as self-hosted fallback. No Block-internal infrastructure dependency identified.
@@ -3176,4 +3505,6 @@ Both paths converge on the same re-sync logic. The proactive path is better UX b
 - [x] Error handling & optimistic UI for comment submission: what happens when a comment POST fails? Design retry logic, error state display, and optimistic UI update pattern. — **Comprehensive section added.** Uses SWR's `mutate()` with `optimisticData` + `rollbackOnError` for cache-based optimistic updates. Error classification into 4 categories (validation 422, auth 401/403, rate limit 403/429, transient 5xx/network). No automatic retry for 4xx; exponential backoff for transient failures. Sonner toast for success/error feedback. Visual "pending" state on optimistic comments (reduced opacity, spinner). `isCommentFormOpen` state persists comment body on error for easy resubmission. See Error Handling & Optimistic UI section in design doc.
 - [x] Stale SHA detection & auto-refresh: Designed polling-based detection using `GET /pulls/{n}` with ETag conditional requests (304s are free against rate limits). Poll every 60s, compare `head.sha` against stored value. On change: show a non-intrusive banner prompting the user to refresh (don't auto-refresh — user may have unsaved comment drafts). On refresh: re-fetch file content + diff, rebuild `commentableLines` set, preserve comment drafts in `sessionStorage`. Webhooks/SSE rejected for MVP — require server infrastructure and don't work for pure-client apps. See Stale SHA Detection section in design doc.
 - [x] Next.js API route structure: defined complete set of API routes — 4 auth routes, 7 GitHub proxy routes (PR list, PR detail, files, comments GET/POST, replies POST, SHA polling), 1 content/image proxy route. Designed shared `requireAuth()` helper, `githubFetch()` with ETag caching, `classifyGitHubError()` for standardised error responses. Middleware optimistically gates `/api/repos/*` on session cookie presence. All errors use `{ error, category, retryAfter?, details? }` format matching the frontend `ApiError` class. Response shapes transform GitHub snake_case to camelCase. See Next.js API Route Structure section in design doc.
-- [ ] Comment threading & display: design how to group flat GitHub review comments into threaded conversations (using `in_reply_to_id`), position them in the right margin aligned with their target source lines, handle overlapping thread positions, and manage scroll-sync between document passages and comment threads.
+- [x] Comment threading & display: designed how to group flat GitHub review comments into threaded conversations (using `in_reply_to_id`), position them in the right margin aligned with their target source lines, handle overlapping thread positions with a push-apart layout algorithm, and manage scroll-sync between document passages and comment threads. Key finding: REST API has no "resolved" state — only available via GraphQL `PullRequestReviewThread.isResolved`. MVP uses REST-only. See Comment Threading & Display section.
+- [ ] Outdated comment handling: design how to detect and display comments on lines that no longer exist after force-pushes (comments with `line: null` or where `original_commit_id !== commit_id`). Include visual treatment (dimmed/collapsed section), and whether to use `original_line`/`original_commit_id` for approximate positioning.
+- [ ] GraphQL integration for thread resolution state: design how to fetch `PullRequestReviewThread.isResolved` via GraphQL, cross-reference with REST comment IDs (GraphQL `databaseId` = REST `id`), and implement resolve/unresolve actions in the UI. Evaluate whether to replace REST comments endpoint entirely with GraphQL.
