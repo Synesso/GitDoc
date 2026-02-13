@@ -3652,6 +3652,252 @@ Users can still reply to outdated threads via the GitHub API (`POST /pulls/{n}/c
 - **SWR/caching**: Outdated status can change when the head SHA changes (stale SHA detection). On SHA change and re-fetch, threads may transition between active and outdated states.
 - **Mobile (drawer)**: Outdated threads appear in a collapsible section within the bottom drawer, below active threads.
 
+## GraphQL Integration for Thread Resolution State
+
+### The Problem
+
+The GitHub REST API for PR review comments has no concept of "resolved" threads. Thread resolution state (`isResolved`, `resolvedBy`) is **only** available via the GitHub GraphQL API on the `PullRequestReviewThread` object. The PRD's interaction model (Section "Resolved state") specifies: *"If a GitHub comment thread is resolved, it appears collapsed/dimmed in the margin. Users can expand it to read the history."* This requires GraphQL integration.
+
+### GraphQL Query Design
+
+The `PullRequest` object has a `reviewThreads` connection that returns all review threads with resolution state, outdated state, position data, and nested comments:
+
+```graphql
+query GetPrReviewThreads($owner: String!, $repo: String!, $prNumber: Int!, $cursor: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $prNumber) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id                    # GraphQL node ID — needed for resolve/unresolve mutations
+          isResolved
+          isOutdated
+          isCollapsed
+          path
+          line
+          originalLine
+          startLine
+          originalStartLine
+          diffSide
+          startDiffSide
+          subjectType
+          resolvedBy {
+            login
+            avatarUrl
+          }
+          viewerCanResolve
+          viewerCanUnresolve
+          comments(first: 100) {
+            nodes {
+              databaseId          # REST API `id` — the cross-reference key
+              fullDatabaseId      # BigInt version (future-proof)
+              body
+              createdAt
+              outdated
+              author {
+                login
+                avatarUrl
+              }
+              line
+              originalLine
+              startLine
+              originalStartLine
+              path
+              diffHunk
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Rate limit cost**: This query has 2 connections (`reviewThreads` with `first: 100`, each thread's `comments` with `first: 100`). Using the GraphQL point formula: `(1 + 100) / 100 = ~2 points`. The GraphQL budget is 5,000 points/hour per user (same as REST). A single query fetching up to 100 threads with up to 100 comments each costs ~2 points — far more efficient than the REST equivalent (which would require separate calls for comments, then separate GraphQL calls for resolution state).
+
+### Cross-Referencing GraphQL Threads with REST Comments
+
+**Key fields for cross-referencing**:
+- `PullRequestReviewComment.databaseId` (GraphQL `Int`) = REST API `id` (integer). This is the primary cross-reference key.
+- `PullRequestReviewComment.fullDatabaseId` (GraphQL `BigInt`) = same value as `databaseId` but as a BigInt. GitHub is migrating to 64-bit IDs — `databaseId` is deprecated (removal scheduled for 2024-07-01 UTC, but still functional as of Feb 2026). Use `fullDatabaseId` as the future-proof alternative.
+- `PullRequestReviewThread.id` (GraphQL `ID!`) = the opaque node ID used for mutations (`resolveReviewThread`, `unresolveReviewThread`). This is NOT the REST `id` and NOT the `node_id` from REST.
+
+**Cross-reference strategy**: Since comments within a `PullRequestReviewThread` have `databaseId` fields, and the REST `in_reply_to_id` field groups replies to a top-level comment, the first comment in each GraphQL thread's `comments` connection has a `databaseId` that equals the REST top-level comment's `id`. This links the thread's GraphQL `id` (needed for mutations) to the REST comment ID used in `buildCommentThreads()`.
+
+### Recommendation: Replace REST Comments with GraphQL
+
+**Evaluate replacing REST entirely**: The GraphQL `reviewThreads` query provides everything GitDoc needs in a single request:
+
+| Data | REST | GraphQL |
+|------|------|---------|
+| Comment body, author, timestamps | ✅ `GET /pulls/{n}/comments` | ✅ `reviewThreads.comments.nodes` |
+| Thread grouping | ❌ Must build from `in_reply_to_id` | ✅ Native — comments nested in threads |
+| Resolved state | ❌ Not available | ✅ `isResolved`, `resolvedBy` |
+| Outdated state | ⚠️ Inferred from `line === null` | ✅ Explicit `isOutdated` boolean |
+| File path, line numbers | ✅ Per comment | ✅ Per thread AND per comment |
+| Viewer permissions | ❌ Not available | ✅ `viewerCanResolve`, `viewerCanUnresolve` |
+| Thread ID for mutations | ❌ Not available | ✅ `id` field |
+
+**Recommendation**: **Use GraphQL as the primary data source for comments** instead of REST. The advantages are significant:
+
+1. **No manual threading**: REST returns a flat list requiring client-side grouping via `in_reply_to_id`. GraphQL returns threads pre-grouped with comments nested inside.
+2. **Resolution state included**: No supplementary GraphQL query needed — `isResolved` and `resolvedBy` come with the primary data fetch.
+3. **Explicit `isOutdated`**: More reliable than inferring from `line === null` (which could theoretically be null for other reasons).
+4. **Viewer permissions**: `viewerCanResolve` and `viewerCanUnresolve` allow the UI to conditionally show/hide resolve buttons without guessing.
+5. **Fewer API calls**: One GraphQL query replaces the REST `GET /pulls/{n}/comments` call AND eliminates the need for a separate thread-resolution query. At ~2 points per query vs 1 REST request, cost is comparable.
+
+**What still uses REST**:
+- **Creating comments**: `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` — REST is simpler for single-comment creation (no need to create a pending review via GraphQL's `addPullRequestReviewThread`). GraphQL comment creation via `addPullRequestReviewThread` requires either an existing `pullRequestReviewId` or the PR's `pullRequestId` (node ID) — slightly more setup.
+- **Replying to comments**: `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies` — REST is simpler (just needs `body`). The GraphQL `addPullRequestReviewThreadReply` requires the thread's node ID, which we now have from the GraphQL query, so either would work. REST is simpler for MVP.
+- **File content, PR list, file list with patches**: These remain REST — GraphQL has no advantage for file content/diff fetching.
+
+### Resolve/Unresolve Mutations
+
+**Mutations**:
+```graphql
+mutation ResolveThread($threadId: ID!) {
+  resolveReviewThread(input: { threadId: $threadId }) {
+    thread {
+      id
+      isResolved
+      resolvedBy {
+        login
+        avatarUrl
+      }
+    }
+  }
+}
+
+mutation UnresolveThread($threadId: ID!) {
+  unresolveReviewThread(input: { threadId: $threadId }) {
+    thread {
+      id
+      isResolved
+    }
+  }
+}
+```
+
+**Input**: Both mutations take a single `threadId: ID!` — the GraphQL node ID of the `PullRequestReviewThread`. This is why we need the GraphQL query to fetch comments: it provides the thread `id` needed for these mutations.
+
+**Permissions**: The `viewerCanResolve` and `viewerCanUnresolve` boolean fields on the thread object indicate whether the authenticated user can perform these actions. Generally, any user with write access to the repo can resolve/unresolve threads.
+
+**Secondary rate limit**: Mutations cost 5 points each (vs 1 point for queries). At 2,000 points/minute max for GraphQL, this is not a concern for infrequent resolve/unresolve actions.
+
+### Updated Data Model
+
+The `CommentThread` interface (from the Comment Threading section) should be updated to include GraphQL-sourced fields:
+
+```ts
+interface CommentThread {
+  // Thread identification
+  graphqlId: string;              // GraphQL node ID — needed for resolve/unresolve mutations
+  topLevelCommentId: number;      // REST-compatible ID (GraphQL databaseId of first comment)
+
+  // Resolution state (from GraphQL)
+  isResolved: boolean;
+  resolvedBy?: { login: string; avatarUrl: string };
+  viewerCanResolve: boolean;
+  viewerCanUnresolve: boolean;
+
+  // Position & status
+  isOutdated: boolean;            // GraphQL isOutdated (replaces line === null inference)
+  path: string;
+  line: number | null;
+  startLine: number | null;
+  originalLine: number | null;
+  diffSide: 'LEFT' | 'RIGHT';
+  subjectType: 'LINE' | 'FILE';
+
+  // Comments
+  comments: ThreadComment[];
+}
+
+interface ThreadComment {
+  databaseId: number;             // REST-compatible ID
+  body: string;
+  createdAt: string;
+  outdated: boolean;
+  author: { login: string; avatarUrl: string };
+}
+```
+
+### API Route: GraphQL Proxy
+
+Add a new API route for the GraphQL query:
+
+**`GET /api/repos/{owner}/{repo}/pulls/{pull_number}/threads`** — Fetches all review threads via GraphQL, returns pre-structured `CommentThread[]` data.
+
+This replaces the REST-based `GET /api/repos/{owner}/{repo}/pulls/{pull_number}/comments` route for reading comments. The REST comments route can be kept for backward compatibility or removed.
+
+**`POST /api/repos/{owner}/{repo}/pulls/{pull_number}/threads/{threadId}/resolve`** — Calls `resolveReviewThread` mutation.
+
+**`POST /api/repos/{owner}/{repo}/pulls/{pull_number}/threads/{threadId}/unresolve`** — Calls `unresolveReviewThread` mutation.
+
+### GraphQL Client Setup
+
+GitHub's GraphQL endpoint is `https://api.github.com/graphql`. Requests use `POST` with the query in the body. Authentication is the same as REST — `Authorization: Bearer {token}` header.
+
+No special GraphQL client library is needed for MVP — a simple `fetch` wrapper suffices:
+
+```ts
+async function githubGraphQL<T>(
+  token: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const json = await res.json();
+
+  if (json.errors) {
+    throw new GitHubGraphQLError(json.errors);
+  }
+
+  return json.data as T;
+}
+```
+
+**Caching**: GraphQL responses don't have ETags (POST requests). Cache by `{owner}/{repo}/{prNumber}` with a short TTL (10–15s, same as REST comments). On `head.sha` change (stale SHA detection), invalidate the threads cache.
+
+### UI Integration: Resolved Thread Display
+
+Following the PRD's interaction model:
+
+- **Resolved threads**: Collapsed by default in the comment margin. Show a subtle "Resolved" badge with `resolvedBy` avatar. Click to expand and see full thread history + reply box.
+- **Resolve button**: Show on unresolved threads when `viewerCanResolve === true`. Positioned in the thread card header.
+- **Unresolve button**: Show on resolved threads when `viewerCanUnresolve === true`. Positioned in the expanded thread card.
+- **Optimistic UI**: On resolve/unresolve action, immediately update the thread's `isResolved` state locally (via SWR `mutate()`), then call the GraphQL mutation. Rollback on error.
+- **Sorting**: Active (unresolved) threads appear first in the margin, followed by resolved threads (collapsed), then outdated threads (from the Outdated Comment Handling section). This gives visual priority to threads needing attention.
+
+### Simplification of `buildCommentThreads()`
+
+With GraphQL as the data source, `buildCommentThreads()` is significantly simplified — it no longer needs to:
+1. Group flat comments by `in_reply_to_id` (threads come pre-grouped)
+2. Infer outdated status from `line === null` (explicit `isOutdated` boolean)
+3. Filter by `side === 'RIGHT'` (filter by `diffSide` at the thread level)
+
+The function becomes a simple transformation from GraphQL response shape to the `CommentThread[]` interface, plus filtering by file path.
+
+### Edge Cases
+
+- **Thread with >100 comments**: Unlikely for PR review threads, but the `comments` connection supports pagination via `pageInfo`. For MVP, `first: 100` is sufficient — very few threads exceed this.
+- **PR with >100 threads**: Paginate `reviewThreads` using `pageInfo.hasNextPage` and `endCursor`. Cost increases by ~1 point per page.
+- **`databaseId` deprecation**: GitHub has marked `databaseId` for removal in favour of `fullDatabaseId` (`BigInt`). The removal date (2024-07-01) has passed without actual removal — GitHub often extends deprecation timelines. Use both fields: `databaseId` for current REST cross-referencing, `fullDatabaseId` as future-proof alternative.
+- **GraphQL rate limit exhaustion**: GraphQL shares the same 5,000 points/hour budget as REST (per user). The threads query at ~2 points + occasional mutations at 5 points each is negligible alongside REST usage.
+- **Token scope**: GraphQL uses the same OAuth token as REST. No additional scopes or permissions needed — `repo` scope (or GitHub App `pull_requests: write`) covers both REST and GraphQL APIs.
+- **Error handling**: GraphQL errors return 200 OK with an `errors` array in the response body (unlike REST which uses HTTP status codes). The `githubGraphQL()` helper must check for `json.errors` and throw appropriately.
+
 # Things to Explore
 - [x] What should be the architecture of the service?
 - [x] Where will it be deployed? — Vercel recommended (zero-config Next.js, serverless, preview deploys). Docker standalone as self-hosted fallback. No Block-internal infrastructure dependency identified.
@@ -3678,4 +3924,4 @@ Users can still reply to outdated threads via the GitHub API (`POST /pulls/{n}/c
 - [x] Next.js API route structure: defined complete set of API routes — 4 auth routes, 7 GitHub proxy routes (PR list, PR detail, files, comments GET/POST, replies POST, SHA polling), 1 content/image proxy route. Designed shared `requireAuth()` helper, `githubFetch()` with ETag caching, `classifyGitHubError()` for standardised error responses. Middleware optimistically gates `/api/repos/*` on session cookie presence. All errors use `{ error, category, retryAfter?, details? }` format matching the frontend `ApiError` class. Response shapes transform GitHub snake_case to camelCase. See Next.js API Route Structure section in design doc.
 - [x] Comment threading & display: designed how to group flat GitHub review comments into threaded conversations (using `in_reply_to_id`), position them in the right margin aligned with their target source lines, handle overlapping thread positions with a push-apart layout algorithm, and manage scroll-sync between document passages and comment threads. Key finding: REST API has no "resolved" state — only available via GraphQL `PullRequestReviewThread.isResolved`. MVP uses REST-only. See Comment Threading & Display section.
 - [x] Outdated comment handling: Designed detection (`line === null` in REST API is the primary signal), updated `ReviewComment` interface with `originalLine`, `originalCommitId`, `commitId`, `diffHunk` fields. GraphQL alternative: `PullRequestReviewThread.isOutdated` boolean. Display: outdated threads collapsed by default in separate "Outdated Comments" section at bottom of sidebar (not approximate-positioned — unreliable). Show original `diff_hunk` as code block on expand for context. Visual: dimmed (`opacity: 0.6`) + "Outdated" badge. Replies to outdated threads still work via the reply endpoint. See Outdated Comment Handling section.
-- [ ] GraphQL integration for thread resolution state: design how to fetch `PullRequestReviewThread.isResolved` via GraphQL, cross-reference with REST comment IDs (GraphQL `databaseId` = REST `id`), and implement resolve/unresolve actions in the UI. Evaluate whether to replace REST comments endpoint entirely with GraphQL.
+- [x] GraphQL integration for thread resolution state: Designed complete GraphQL query for `PullRequest.reviewThreads` with nested comments, resolution state (`isResolved`, `resolvedBy`), outdated state, and viewer permissions (`viewerCanResolve`/`viewerCanUnresolve`). **Recommended replacing REST comments endpoint with GraphQL** — threads come pre-grouped (no manual `in_reply_to_id` assembly), resolution state is included, `isOutdated` is explicit. REST retained for creating comments and replies (simpler). Designed `resolveReviewThread`/`unresolveReviewThread` mutations, updated `CommentThread` data model, new API routes (`/threads`, `/threads/{id}/resolve`, `/threads/{id}/unresolve`), minimal `githubGraphQL()` helper. GraphQL cost: ~2 points per query. See GraphQL Integration section.
