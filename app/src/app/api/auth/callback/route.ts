@@ -84,11 +84,13 @@ export async function GET(request: NextRequest) {
 
   let githubLogin: string | undefined;
   let avatarUrl: string | undefined;
+  let name: string | undefined;
 
   if (userResponse.ok) {
     const userData = await userResponse.json();
     githubLogin = userData.login;
     avatarUrl = userData.avatar_url;
+    name = userData.name ?? undefined;
   }
 
   // Store token and user info in the encrypted session cookie
@@ -96,6 +98,7 @@ export async function GET(request: NextRequest) {
   session.githubToken = accessToken;
   session.githubLogin = githubLogin;
   session.avatarUrl = avatarUrl;
+  session.name = name;
   await session.save();
 
   // Clear the oauth_state cookie

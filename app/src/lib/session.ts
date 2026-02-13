@@ -6,6 +6,7 @@ export interface SessionData {
   githubToken?: string;
   githubLogin?: string;
   avatarUrl?: string;
+  name?: string;
 }
 
 function getSessionOptions() {
