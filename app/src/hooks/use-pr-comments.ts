@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { ApiError, parseApiError, parseRetryAfter } from "@/lib/api-error";
 
 /**
  * Shape of a PR review comment as returned by our API routes.
@@ -71,6 +72,10 @@ export function usePRComments(
     revalidateOnFocus: true,
   });
 
+  /**
+   * Post a new comment with optimistic UI. Throws an `ApiError` on failure
+   * so callers can display category-specific error states.
+   */
   const submitComment = async (params: SubmitCommentParams) => {
     const optimisticComment: PRComment = {
       id: `temp-${Date.now()}`,
@@ -92,11 +97,11 @@ export function usePRComments(
         });
 
         if (!res.ok) {
-          const errorBody = await res.json().catch(() => ({}));
-          const err = new Error(errorBody.error ?? `HTTP ${res.status}`);
-          (err as any).status = res.status;
-          (err as any).category = errorBody.category;
-          throw err;
+          const apiErr = parseApiError(res);
+          if (apiErr.isRateLimit) {
+            apiErr.retryAfter = parseRetryAfter(res);
+          }
+          throw apiErr;
         }
 
         const serverComment: PRComment = await res.json();

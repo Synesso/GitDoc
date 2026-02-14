@@ -1,15 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { AlertCircle, LogIn, RefreshCw, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { SelectionInfo } from "@/lib/extract-selection-info";
+import type { ApiError } from "@/lib/api-error";
 import {
   saveDraft,
   loadDraft,
   clearDraft,
   lineRangeKey,
 } from "@/lib/comment-drafts";
+
+export interface CommentSubmissionError {
+  /** The classified API error */
+  error: ApiError;
+  /** Callback to manually retry submission */
+  onRetry?: () => void;
+  /** Callback to refresh PR data (for stale SHA 422 errors) */
+  onRefresh?: () => void;
+}
 
 interface CommentFormProps {
   /** The captured selection snapshot — provides line context and selected text */
@@ -24,6 +35,8 @@ interface CommentFormProps {
   prNumber?: number;
   /** File path — required for draft storage key */
   filePath?: string;
+  /** Error from a failed submission attempt, displayed by category */
+  submissionError?: CommentSubmissionError | null;
 }
 
 /**
@@ -41,6 +54,7 @@ export function CommentForm({
   isSubmitting = false,
   prNumber,
   filePath,
+  submissionError,
 }: CommentFormProps) {
   const { startLine, endLine, selectedText } = selectionInfo;
   const rangeKey = lineRangeKey(startLine, endLine);
@@ -134,6 +148,12 @@ export function CommentForm({
           Restored unsaved comment
         </p>
       )}
+      {submissionError && (
+        <SubmissionErrorBanner
+          submissionError={submissionError}
+          onDismiss={undefined}
+        />
+      )}
       <div className="flex items-center justify-end gap-2 mt-2">
         <Button
           type="button"
@@ -152,6 +172,181 @@ export function CommentForm({
         >
           {isSubmitting ? "Posting…" : "Submit"}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline error banner — displayed inside CommentForm on submission failure
+// ---------------------------------------------------------------------------
+
+function RateLimitCountdown({ retryAfter }: { retryAfter: number }) {
+  const [remaining, setRemaining] = useState(retryAfter);
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const id = setInterval(() => {
+      setRemaining((r) => Math.max(0, r - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [remaining]);
+
+  if (remaining <= 0) return null;
+
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+  const display = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+  return (
+    <span className="tabular-nums font-medium">{display}</span>
+  );
+}
+
+function SubmissionErrorBanner({
+  submissionError,
+  onDismiss,
+}: {
+  submissionError: CommentSubmissionError;
+  onDismiss: (() => void) | undefined;
+}) {
+  const { error, onRetry, onRefresh } = submissionError;
+
+  let icon: React.ReactNode;
+  let message: React.ReactNode;
+  let actions: React.ReactNode = null;
+
+  switch (error.category) {
+    case "validation":
+      icon = <AlertCircle className="size-3.5 shrink-0 text-destructive" />;
+      message = (
+        <span>
+          The PR was updated since you loaded this page. Your comment has been
+          saved.
+        </span>
+      );
+      if (onRefresh) {
+        actions = (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={onRefresh}
+          >
+            <RefreshCw className="size-3 mr-1" />
+            Refresh &amp; Retry
+          </Button>
+        );
+      }
+      break;
+
+    case "auth":
+      icon = <LogIn className="size-3.5 shrink-0 text-destructive" />;
+      message = (
+        <span>
+          Your session has expired.{" "}
+          <a
+            href="/api/auth/login"
+            className="underline font-medium hover:text-foreground"
+          >
+            Sign in again
+          </a>{" "}
+          to continue.
+        </span>
+      );
+      break;
+
+    case "rate_limit":
+      icon = <Timer className="size-3.5 shrink-0 text-amber-500" />;
+      message = (
+        <span>
+          Rate limit reached.
+          {error.retryAfter != null && error.retryAfter > 0 ? (
+            <>
+              {" "}Retrying in{" "}
+              <RateLimitCountdown retryAfter={error.retryAfter} />.
+            </>
+          ) : (
+            " Please try again shortly."
+          )}
+        </span>
+      );
+      if (onRetry) {
+        actions = (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={onRetry}
+          >
+            Retry now
+          </Button>
+        );
+      }
+      break;
+
+    case "transient":
+    case "network":
+      icon = <AlertCircle className="size-3.5 shrink-0 text-destructive" />;
+      message = <span>Failed to post comment.</span>;
+      actions = (
+        <div className="flex gap-1.5">
+          {onRetry && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={onRetry}
+            >
+              Retry
+            </Button>
+          )}
+          {onDismiss && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={onDismiss}
+            >
+              Dismiss
+            </Button>
+          )}
+        </div>
+      );
+      break;
+
+    default:
+      icon = <AlertCircle className="size-3.5 shrink-0 text-destructive" />;
+      message = <span>{error.message || "An error occurred."}</span>;
+      if (onRetry) {
+        actions = (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={onRetry}
+          >
+            Retry
+          </Button>
+        );
+      }
+      break;
+  }
+
+  return (
+    <div
+      role="alert"
+      className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-foreground"
+    >
+      <div className="mt-0.5">{icon}</div>
+      <div className="flex-1 space-y-1.5">
+        <div>{message}</div>
+        {actions && <div>{actions}</div>}
       </div>
     </div>
   );
