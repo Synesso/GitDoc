@@ -181,3 +181,14 @@
   outline: 2px solid oklch(0.5 0.18 250);
   background-color: oklch(0.3 0.05 250 / 20%);
 }
+
+/* Left-margin gutter bar on commentable elements — indicates this passage
+   is part of the PR diff and can receive review comments. */
+[data-commentable="true"] {
+  border-left: 3px solid oklch(0.623 0.214 259.815); /* blue-500 #3b82f6, ≥3:1 contrast */
+  padding-left: 0.75rem;
+}
+
+.dark [data-commentable="true"] {
+  border-left-color: oklch(0.623 0.214 259.815); /* same blue-500 — sufficient contrast on dark bg */
+}
