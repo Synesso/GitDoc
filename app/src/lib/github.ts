@@ -150,6 +150,17 @@ export function classifyGitHubError(
 }
 
 /**
+ * Parse the RFC 5988 `Link` header returned by GitHub's paginated endpoints
+ * and return the URL for the `rel="next"` page, or `null` if there is no
+ * next page.
+ */
+export function parseLinkHeader(header: string | null): string | null {
+  if (!header) return null;
+  const match = header.match(/<([^>]+)>;\s*rel="next"/);
+  return match?.[1] ?? null;
+}
+
+/**
  * Build a Next.js JSON Response from a GitHub API proxy result.
  * Forwards `x-ratelimit-remaining` and `x-ratelimit-reset` headers so the
  * frontend can monitor rate-limit usage.

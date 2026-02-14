@@ -3,17 +3,12 @@ import {
   githubFetch,
   classifyGitHubError,
   buildProxyResponse,
+  parseLinkHeader,
 } from "@/lib/github";
 
 type RouteParams = {
   params: Promise<{ owner: string; repo: string; pull_number: string }>;
 };
-
-function parseLinkHeader(header: string | null): string | null {
-  if (!header) return null;
-  const match = header.match(/<([^>]+)>;\s*rel="next"/);
-  return match?.[1] ?? null;
-}
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { session, error } = await requireAuth();
