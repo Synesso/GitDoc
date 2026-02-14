@@ -94,7 +94,7 @@ A checklist of everything that needs to be built, derived from the design docume
 ## Visual Indication of Commentable Regions
 
 - [x] Add left-margin gutter bar on commentable elements — 3px `border-left` in accent color (`blue-500` for ≥3:1 contrast) on `[data-commentable="true"]` elements
-- [ ] Add hover highlight on commentable elements — subtle background color on `[data-commentable="true"]:hover`; non-commentable elements get no hover effect
+- [x] Add hover highlight on commentable elements — subtle background color on `[data-commentable="true"]:hover`; non-commentable elements get no hover effect
 - [ ] Show selection-time feedback — comment anchor when lines are commentable; dismissible tooltip ("This passage wasn't changed in this PR") when not commentable
 
 ## Page Layout

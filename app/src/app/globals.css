@@ -192,3 +192,14 @@
 .dark [data-commentable="true"] {
   border-left-color: oklch(0.623 0.214 259.815); /* same blue-500 — sufficient contrast on dark bg */
 }
+
+/* Hover highlight on commentable elements — reinforces interactivity.
+   Non-commentable elements get no hover effect. */
+[data-commentable="true"]:hover {
+  background-color: oklch(0.623 0.214 259.815 / 8%); /* blue-500 at 8% opacity */
+  transition: background-color 150ms ease;
+}
+
+.dark [data-commentable="true"]:hover {
+  background-color: oklch(0.623 0.214 259.815 / 12%); /* slightly more visible on dark bg */
+}
