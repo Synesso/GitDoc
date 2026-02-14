@@ -51,6 +51,7 @@ export function DocumentReviewLayout({
         </main>
         <aside
           className="hidden md:block w-80 lg:w-96 border-l"
+          role="complementary"
           aria-label="Comment threads"
         >
           <ScrollArea className="h-full" ref={sidebarRef}>
