@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Created `src/lib/graphql.ts` with `githubGraphQL()` helper — simple typed `fetch` wrapper for `POST https://api.github.com/graphql` with Bearer token auth. Exports `githubGraphQL<T>(token, query, variables)` that returns `T` from `json.data`. Throws `GitHubGraphQLError` (with structured `errors` array) on GraphQL errors, and a plain `Error` on HTTP-level failures. Also exports `GraphQLError` interface and `GitHubGraphQLError` class. No caching (POST requests don't support ETags; caching will be done at the route level). Verified production build passes.
 - Consolidated pagination handling for files and comments routes — both already aggregated all pages via `parseLinkHeader` + `while` loop with `per_page=100`. Extracted the duplicated `parseLinkHeader()` utility from both route files into the shared `lib/github.ts` module. Verified production build passes.
 - Created `GET /api/repos/[owner]/[repo]/pulls` route — lists open PRs, proxies to GitHub with 30s cache TTL + ETag, maps response to `{ pulls: [{ number, title, user: { login, avatarUrl }, headSha, updatedAt, draft }] }`. Supports `?page=` query param. Verified production build passes.
 - Created `GET /api/repos/[owner]/[repo]/pulls/[pull_number]` route — returns single PR detail `{ number, title, state, draft, headSha, baseSha }`. 30s cache TTL + ETag. Follows same pattern as pulls list route. Verified production build passes.
