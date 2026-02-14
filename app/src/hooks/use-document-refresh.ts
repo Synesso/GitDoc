@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type RefObject } from "react";
 import { mutate } from "swr";
 import {
   getCommentableLines,
@@ -8,12 +8,15 @@ import {
   type CommentableLinesResult,
 } from "@/lib/commentable-lines";
 import { saveDraft, lineRangeKey } from "@/lib/comment-drafts";
+import { useScrollPreservation } from "@/hooks/use-scroll-preservation";
 
 interface DocumentRefreshParams {
   owner: string;
   repo: string;
   prNumber: number;
   filePath: string;
+  /** Ref to the scrollable content container (for scroll position preservation) */
+  contentRef?: RefObject<HTMLElement | null>;
 }
 
 interface DraftToSave {
@@ -52,9 +55,14 @@ export function useDocumentRefresh({
   repo,
   prNumber,
   filePath,
+  contentRef,
 }: DocumentRefreshParams) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<Error | null>(null);
+
+  const { saveScrollPosition, restoreScrollPosition } = useScrollPreservation(
+    contentRef ?? { current: null },
+  );
 
   /** Ref to a callback that returns the current comment draft (if any) */
   const getDraftRef = useRef<(() => DraftToSave | null) | null>(null);
@@ -75,6 +83,9 @@ export function useDocumentRefresh({
     setRefreshError(null);
 
     try {
+      // 0. Save scroll position before anything changes
+      saveScrollPosition();
+
       // 1. Save any open comment draft
       const draft = getDraftRef.current?.();
       if (draft && draft.body.trim()) {
@@ -158,5 +169,11 @@ export function useDocumentRefresh({
      * Called before refresh to save the draft to sessionStorage.
      */
     registerDraftProvider,
+    /**
+     * Restore scroll position after the caller has updated state and
+     * the new content has been rendered. Call this in a useEffect or
+     * after setState to ensure the DOM reflects the new content.
+     */
+    restoreScrollPosition,
   };
 }
