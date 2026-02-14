@@ -159,3 +159,25 @@
 .dark .thread-card-highlighted {
   outline: 2px solid oklch(0.5 0.15 250);
 }
+
+/* Click-to-scroll: momentary passage highlight after clicking a thread card */
+.passage-click-highlight {
+  background-color: oklch(0.9 0.08 90 / 40%);
+  transition: background-color 300ms ease;
+}
+
+.dark .passage-click-highlight {
+  background-color: oklch(0.5 0.08 90 / 30%);
+}
+
+/* Click-to-scroll: momentary thread card highlight after clicking a passage indicator */
+.thread-card-click-highlight {
+  outline: 2px solid oklch(0.6 0.18 250);
+  background-color: oklch(0.95 0.05 250 / 20%);
+  transition: outline 300ms ease, background-color 300ms ease;
+}
+
+.dark .thread-card-click-highlight {
+  outline: 2px solid oklch(0.5 0.18 250);
+  background-color: oklch(0.3 0.05 250 / 20%);
+}

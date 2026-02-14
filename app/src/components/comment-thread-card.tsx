@@ -49,6 +49,8 @@ export interface CommentThreadCardProps {
   onMouseEnter?: () => void;
   /** Called on mouse leave — for bidirectional hover sync */
   onMouseLeave?: () => void;
+  /** Called on click — for click-to-scroll sync (scrolls passage into view) */
+  onClick?: () => void;
 }
 
 /** Maximum replies shown before the Collapsible kicks in */
@@ -117,6 +119,7 @@ function CommentBody({ comment }: { comment: ThreadComment }) {
  * Includes an "Open in GitHub" link at the bottom.
  */
 export function CommentThreadCard({
+  threadId,
   comments,
   isResolved = false,
   resolvedBy,
@@ -129,6 +132,7 @@ export function CommentThreadCard({
   isHighlighted = false,
   onMouseEnter,
   onMouseLeave,
+  onClick,
 }: CommentThreadCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -147,13 +151,15 @@ export function CommentThreadCard({
   return (
     <Card
       className={
-        "py-3 gap-3 transition-colors" +
+        "py-3 gap-3 transition-colors cursor-pointer" +
         (isResolved ? " opacity-70" : "") +
         (isHighlighted ? " thread-card-highlighted" : "")
       }
+      data-thread-id={threadId}
       data-thread-line={line}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={onClick}
     >
       <CardContent className="px-3 space-y-3">
         {isResolved && (
