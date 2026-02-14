@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { updateRateLimitFromHeaders } from "@/hooks/use-rate-limit-monitor";
 
 /** Shape of a comment within a thread (from GraphQL threads API) */
 export interface ThreadComment {
@@ -39,6 +40,7 @@ interface UsePRThreadsOptions {
 
 const fetcher = async (url: string): Promise<ReviewThread[]> => {
   const res = await fetch(url);
+  updateRateLimitFromHeaders(res.headers);
   if (!res.ok) {
     throw new Error("Failed to fetch threads");
   }

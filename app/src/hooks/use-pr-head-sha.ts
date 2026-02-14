@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { updateRateLimitFromHeaders } from "@/hooks/use-rate-limit-monitor";
 
 interface PrHeadResponse {
   headSha: string;
@@ -9,6 +10,7 @@ interface PrHeadResponse {
 
 const fetcher = async (url: string): Promise<PrHeadResponse> => {
   const res = await fetch(url);
+  updateRateLimitFromHeaders(res.headers);
   if (!res.ok) {
     throw new Error("Failed to fetch PR head SHA");
   }

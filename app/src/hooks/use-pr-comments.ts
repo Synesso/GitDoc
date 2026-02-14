@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { ApiError, parseApiError, parseRetryAfter } from "@/lib/api-error";
+import { updateRateLimitFromHeaders } from "@/hooks/use-rate-limit-monitor";
 
 /**
  * Shape of a PR review comment as returned by our API routes.
@@ -39,6 +40,7 @@ interface UsePRCommentsOptions {
 
 const fetcher = async (url: string): Promise<PRComment[]> => {
   const res = await fetch(url);
+  updateRateLimitFromHeaders(res.headers);
   if (!res.ok) {
     const err = new Error("Failed to fetch comments");
     throw err;
