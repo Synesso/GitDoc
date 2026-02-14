@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypePrismPlus from "rehype-prism-plus";
 import { rehypeSourceLines } from "@/lib/rehype-source-lines";
 import { rehypeCodeSourceLines } from "@/lib/rehype-code-source-lines";
 import { rehypeCommentable } from "@/lib/rehype-commentable";
+import { rehypeCommentButtons } from "@/lib/rehype-comment-buttons";
 import { makeUrlTransform } from "@/lib/url-transform";
 
 interface MarkdownRendererProps {
@@ -21,6 +22,8 @@ interface MarkdownRendererProps {
   filePath?: string;
   /** Set of source line numbers that are commentable (appear in the PR diff). When provided, elements overlapping these lines get `data-commentable="true"`. */
   commentableLines?: Set<number>;
+  /** Called when a keyboard/screen-reader user activates a comment trigger button. Receives the start and end source line numbers. */
+  onCommentTrigger?: (startLine: number, endLine: number) => void;
 }
 
 /**
@@ -43,6 +46,7 @@ export function MarkdownRenderer({
   headSha,
   filePath,
   commentableLines,
+  onCommentTrigger,
 }: MarkdownRendererProps) {
   const urlTransform = useMemo(() => {
     if (owner && repo && headSha && filePath) {
@@ -59,12 +63,32 @@ export function MarkdownRenderer({
     ];
     if (commentableLines) {
       plugins.push([rehypeCommentable, { commentableLines }]);
+      plugins.push(rehypeCommentButtons);
     }
     return plugins;
   }, [commentableLines]);
 
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      const target = e.target as HTMLElement;
+      if (!onCommentTrigger) return;
+      if (target.tagName !== "BUTTON") return;
+      if (!target.hasAttribute("data-comment-trigger")) return;
+
+      const start = Number(target.getAttribute("data-trigger-start"));
+      const end = Number(target.getAttribute("data-trigger-end"));
+      if (!isNaN(start) && !isNaN(end)) {
+        onCommentTrigger(start, end);
+      }
+    },
+    [onCommentTrigger],
+  );
+
   return (
-    <article className="prose dark:prose-invert lg:prose-lg max-w-none">
+    <article
+      className="prose dark:prose-invert lg:prose-lg max-w-none"
+      onClick={handleClick}
+    >
       <Markdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={rehypePlugins}
