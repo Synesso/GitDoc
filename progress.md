@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Created `app/vercel.json` with framework, region, and build env config. Updated `README.md` with step-by-step Vercel deployment instructions covering GitHub OAuth App setup, project import with `app/` root directory, required environment variables (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `NEXT_PUBLIC_APP_URL`) with type/sensitivity guidance, and deploy trigger. Verified production build passes.
 - Configured `next.config.ts` with `output: "standalone"` to enable Docker self-hosted deployment alongside Vercel. Verified production build passes.
 - Verified non-text contrast ≥3:1 for gutter bars and highlight backgrounds. All CSS in `globals.css` already uses `blue-500` (`oklch(0.623 0.214 259.815)` / `#3b82f6`) for the commentable gutter bar `border-left`, hover highlights, and focus-visible rings. No instances of `blue-400` exist. Marked task complete.
 - Added explicit `role="complementary"` to the `<aside>` in `DocumentReviewLayout`. The `<header role="banner">` and `<main aria-label="Rendered document">` landmarks were already in place from prior implementations. Verified production build passes.

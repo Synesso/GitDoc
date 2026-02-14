@@ -31,6 +31,20 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Create a GitHub OAuth App** at <https://github.com/settings/developers>:
+   - Set **Authorization callback URL** to `https://<your-domain>/api/auth/callback`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Import the project** on [Vercel](https://vercel.com/new) and set the **Root Directory** to `app/`.
+
+3. **Add the following environment variables** in the Vercel project settings (Settings → Environment Variables):
+
+   | Variable | Type | Description |
+   |----------|------|-------------|
+   | `GITHUB_CLIENT_ID` | Plain text | OAuth App client ID |
+   | `GITHUB_CLIENT_SECRET` | Sensitive | OAuth App client secret |
+   | `SESSION_SECRET` | Sensitive | 32+ character random string for `iron-session` cookie encryption (generate with `openssl rand -hex 32`) |
+   | `NEXT_PUBLIC_APP_URL` | Plain text | Canonical app URL, e.g. `https://gitdoc.example.com` (no trailing slash) |
+
+   Mark `GITHUB_CLIENT_SECRET` and `SESSION_SECRET` as **Sensitive** so they are encrypted at rest and hidden in logs.
+
+4. **Deploy** — Vercel auto-detects the Next.js framework and applies the configuration from `vercel.json`.
