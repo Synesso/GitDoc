@@ -73,7 +73,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## Comment Form & Submission
 
-- [ ] Build comment form component — textarea with Submit/Cancel, `role="dialog"` `aria-modal="false"`, auto-focus on open, `aria-describedby` with line context
+- [x] Build comment form component — textarea with Submit/Cancel, `role="dialog"` `aria-modal="false"`, auto-focus on open, `aria-describedby` with line context
 - [ ] Apply CSS highlight class on selected passage while comment form is open — uses stored `startLine`/`endLine` to highlight `[data-source-start]` elements as a visual substitute for the cleared native selection
 - [ ] Implement `usePRComments` hook with SWR — fetches comments from API, provides `submitComment()` with optimistic `mutate()`, `rollbackOnError`, and `populateCache`
 - [ ] Build `postComment()` helper with retry logic — 3 attempts with exponential backoff for transient errors; immediate throw for 422/401/404; rate-limit metadata extraction
