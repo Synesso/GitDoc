@@ -95,11 +95,11 @@ A checklist of everything that needs to be built, derived from the design docume
 
 - [x] Add left-margin gutter bar on commentable elements — 3px `border-left` in accent color (`blue-500` for ≥3:1 contrast) on `[data-commentable="true"]` elements
 - [x] Add hover highlight on commentable elements — subtle background color on `[data-commentable="true"]:hover`; non-commentable elements get no hover effect
-- [ ] Show selection-time feedback — comment anchor when lines are commentable; dismissible tooltip ("This passage wasn't changed in this PR") when not commentable
+- [x] Show selection-time feedback — comment anchor when lines are commentable; dismissible tooltip ("This passage wasn't changed in this PR") when not commentable
 
 ## Page Layout
 
-- [ ] Build two-column desktop layout (≥768px) — rendered markdown (`flex-1`) on left, comment sidebar (`w-80 lg:w-96 border-l`, `hidden md:block`) on right
+- [x] Build two-column desktop layout (≥768px) — rendered markdown (`flex-1`) on left, comment sidebar (`w-80 lg:w-96 border-l`, `hidden md:block`) on right
 - [ ] Build header component — PR title, file selector dropdown, navigation breadcrumb; responsive condensed version for mobile
 - [ ] Wrap rendered markdown in `<article className="prose dark:prose-invert lg:prose-lg max-w-none">` — typography plugin styles with dark mode support
 - [ ] Build mobile layout (<768px) with bottom Drawer (Vaul) — full-width content, floating comment count badge, drawer with `CommentThreadList` inside `ScrollArea`
