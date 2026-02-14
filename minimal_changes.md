@@ -108,7 +108,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## Stale SHA Detection & Refresh
 
-- [ ] Implement `usePrHeadSha` hook — SWR polling every 60s with `revalidateOnFocus: true`, compares returned headSha against stored initial value
+- [x] Implement `usePrHeadSha` hook — SWR polling every 60s with `revalidateOnFocus: true`, compares returned headSha against stored initial value
 - [ ] Show stale-SHA banner — non-intrusive top-of-page banner with "Refresh Now" and "Dismiss" when `isStale` is true
 - [ ] Implement re-sync flow on "Refresh Now" — save comment drafts, re-fetch file content + diff at new SHA, rebuild `commentableLines`, re-render markdown, restore drafts, update stored headSha
 - [ ] Preserve scroll position on refresh — record `data-source-start` of element at viewport top before refresh, `scrollIntoView()` the same element after re-render
