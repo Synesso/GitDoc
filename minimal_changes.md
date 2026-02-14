@@ -43,7 +43,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 - [x] Create `lib/graphql.ts` with `githubGraphQL()` helper — simple `fetch` wrapper for `POST https://api.github.com/graphql` with token auth
 - [x] Create `GET /api/repos/[owner]/[repo]/pulls/[pull_number]/threads` — fetches `PullRequest.reviewThreads` via GraphQL, returns pre-grouped threads with `isResolved`, `isOutdated`, `viewerCanResolve`
-- [ ] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/threads/[threadId]/resolve` — calls `resolveReviewThread` GraphQL mutation
+- [x] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/threads/[threadId]/resolve` — calls `resolveReviewThread` GraphQL mutation
 - [ ] Create `POST /api/repos/[owner]/[repo]/pulls/[pull_number]/threads/[threadId]/unresolve` — calls `unresolveReviewThread` GraphQL mutation
 
 ## Markdown Rendering Pipeline
