@@ -84,7 +84,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 - [x] Build `buildCommentThreads()` function — groups flat REST comments by `in_reply_to_id` into `CommentThread[]` sorted by line number (used as fallback; primary source is GraphQL)
 - [x] Build thread layout algorithm (`layoutThreadCards()`) — computes desired Y positions from DOM elements, pushes overlapping cards apart with minimum gap constraint
-- [ ] Build `CommentThread` card component — Avatar, body, timestamp, reply count, Collapsible for long threads, "Open in GitHub" link
+- [x] Build `CommentThread` card component — Avatar, body, timestamp, reply count, Collapsible for long threads, "Open in GitHub" link
 - [ ] Implement bidirectional hover sync — hovering a thread card highlights the passage, hovering a commented passage highlights the thread card
 - [ ] Implement click-to-scroll sync — clicking a thread card scrolls the passage into view (`scrollIntoView({ behavior: 'smooth', block: 'center' })`), and vice versa
 - [ ] Display resolved threads collapsed/dimmed with "Resolved" badge and `resolvedBy` avatar — expand on click to see history
