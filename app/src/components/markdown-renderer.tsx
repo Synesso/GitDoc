@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import rehypePrismPlus from "rehype-prism-plus";
 import { rehypeSourceLines } from "@/lib/rehype-source-lines";
 import { rehypeCodeSourceLines } from "@/lib/rehype-code-source-lines";
+import { rehypeCommentable } from "@/lib/rehype-commentable";
 import { makeUrlTransform } from "@/lib/url-transform";
 
 interface MarkdownRendererProps {
@@ -18,6 +19,8 @@ interface MarkdownRendererProps {
   headSha?: string;
   /** Path of the markdown file within the repo (e.g., "docs/README.md"). */
   filePath?: string;
+  /** Set of source line numbers that are commentable (appear in the PR diff). When provided, elements overlapping these lines get `data-commentable="true"`. */
+  commentableLines?: Set<number>;
 }
 
 /**
@@ -39,6 +42,7 @@ export function MarkdownRenderer({
   repo,
   headSha,
   filePath,
+  commentableLines,
 }: MarkdownRendererProps) {
   const urlTransform = useMemo(() => {
     if (owner && repo && headSha && filePath) {
@@ -47,15 +51,23 @@ export function MarkdownRenderer({
     return undefined;
   }, [owner, repo, headSha, filePath]);
 
+  const rehypePlugins = useMemo(() => {
+    const plugins: Parameters<typeof Markdown>[0]["rehypePlugins"] = [
+      rehypeSourceLines,
+      [rehypePrismPlus, { ignoreMissing: true }],
+      rehypeCodeSourceLines,
+    ];
+    if (commentableLines) {
+      plugins.push([rehypeCommentable, { commentableLines }]);
+    }
+    return plugins;
+  }, [commentableLines]);
+
   return (
     <article className="prose dark:prose-invert lg:prose-lg max-w-none">
       <Markdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[
-          rehypeSourceLines,
-          [rehypePrismPlus, { ignoreMissing: true }],
-          rehypeCodeSourceLines,
-        ]}
+        rehypePlugins={rehypePlugins}
         urlTransform={urlTransform}
       >
         {content}
