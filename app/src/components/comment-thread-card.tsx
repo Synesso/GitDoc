@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ChevronRight, ExternalLink } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, ChevronRight, ExternalLink, Undo2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,14 @@ export interface CommentThreadCardProps {
   isResolved?: boolean;
   /** User who resolved the thread */
   resolvedBy?: { login: string; avatarUrl: string };
+  /** Whether the viewer can resolve this thread */
+  viewerCanResolve?: boolean;
+  /** Whether the viewer can unresolve this thread */
+  viewerCanUnresolve?: boolean;
+  /** Called when the user clicks "Resolve" */
+  onResolve?: () => void;
+  /** Called when the user clicks "Unresolve" */
+  onUnresolve?: () => void;
   /** GitHub URL parts for "Open in GitHub" link */
   owner: string;
   repo: string;
@@ -123,6 +131,10 @@ export function CommentThreadCard({
   comments,
   isResolved = false,
   resolvedBy,
+  viewerCanResolve = false,
+  viewerCanUnresolve = false,
+  onResolve,
+  onUnresolve,
   owner,
   repo,
   prNumber,
@@ -136,6 +148,22 @@ export function CommentThreadCard({
 }: CommentThreadCardProps) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [isResolvedExpanded, setIsResolvedExpanded] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+
+  const handleResolveToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isResolving) return;
+    setIsResolving(true);
+    try {
+      if (isResolved && onUnresolve) {
+        await onUnresolve();
+      } else if (!isResolved && onResolve) {
+        await onResolve();
+      }
+    } finally {
+      setIsResolving(false);
+    }
+  };
 
   if (comments.length === 0) return null;
 
@@ -209,7 +237,21 @@ export function CommentThreadCard({
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                {viewerCanUnresolve && onUnresolve ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1 px-2"
+                    disabled={isResolving}
+                    onClick={handleResolveToggle}
+                  >
+                    <Undo2 className="size-3" />
+                    {isResolving ? "Unresolving…" : "Unresolve"}
+                  </Button>
+                ) : (
+                  <span />
+                )}
                 <a
                   href={githubUrl}
                   target="_blank"
@@ -278,7 +320,21 @@ export function CommentThreadCard({
           </div>
         )}
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          {viewerCanResolve && onResolve ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs gap-1 px-2"
+              disabled={isResolving}
+              onClick={handleResolveToggle}
+            >
+              <CheckCircle2 className="size-3" />
+              {isResolving ? "Resolving…" : "Resolve"}
+            </Button>
+          ) : (
+            <span />
+          )}
           <a
             href={githubUrl}
             target="_blank"

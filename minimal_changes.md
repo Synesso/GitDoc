@@ -88,7 +88,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Implement bidirectional hover sync — hovering a thread card highlights the passage, hovering a commented passage highlights the thread card
 - [x] Implement click-to-scroll sync — clicking a thread card scrolls the passage into view (`scrollIntoView({ behavior: 'smooth', block: 'center' })`), and vice versa
 - [x] Display resolved threads collapsed/dimmed with "Resolved" badge and `resolvedBy` avatar — expand on click to see history
-- [ ] Show resolve/unresolve buttons conditionally based on `viewerCanResolve`/`viewerCanUnresolve` — calls GraphQL mutations with optimistic UI
+- [x] Show resolve/unresolve buttons conditionally based on `viewerCanResolve`/`viewerCanUnresolve` — calls GraphQL mutations with optimistic UI
 - [ ] Display outdated threads in a separate "Outdated Comments" section at sidebar bottom — collapsed by default, dimmed (`opacity: 0.6`), "Outdated" badge, original `diff_hunk` shown as code block on expand
 
 ## Visual Indication of Commentable Regions
