@@ -9,6 +9,8 @@ export interface StaleShabannerProps {
   isStale: boolean;
   /** Called when the user clicks "Refresh Now" */
   onRefresh: () => void;
+  /** Whether a refresh is currently in progress */
+  isRefreshing?: boolean;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface StaleShabannerProps {
  * Uses `role="status"` (`aria-live="polite"`) so screen readers
  * announce the change without interrupting the current task.
  */
-export function StaleShaBanner({ isStale, onRefresh }: StaleShabannerProps) {
+export function StaleShaBanner({ isStale, onRefresh, isRefreshing = false }: StaleShabannerProps) {
   const [dismissed, setDismissed] = useState(false);
 
   if (!isStale || dismissed) return null;
@@ -40,10 +42,11 @@ export function StaleShaBanner({ isStale, onRefresh }: StaleShabannerProps) {
           variant="outline"
           size="xs"
           onClick={onRefresh}
+          disabled={isRefreshing}
           className="gap-1"
         >
-          <RefreshCw className="size-3" />
-          Refresh Now
+          <RefreshCw className={`size-3 ${isRefreshing ? "animate-spin" : ""}`} />
+          {isRefreshing ? "Refreshing…" : "Refresh Now"}
         </Button>
         <Button
           variant="ghost"
