@@ -19,6 +19,8 @@ interface CommentAnchorButtonProps {
   commentableLines: Set<number>;
   /** Called when the user clicks the anchor button with a valid commentable selection */
   onComment: (selectionInfo: SelectionInfo) => void;
+  /** When true, suppresses clearing stored SelectionInfo on selection loss (e.g., textarea focus) */
+  isCommentFormOpen?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function CommentAnchorButton({
   containerRef,
   commentableLines,
   onComment,
+  isCommentFormOpen = false,
 }: CommentAnchorButtonProps) {
   const [selectionInfo, setSelectionInfo] = useState<SelectionInfo | null>(null);
   const [showNonCommentableHint, setShowNonCommentableHint] = useState(false);
@@ -67,13 +70,14 @@ export function CommentAnchorButton({
   );
 
   const onClearSelection = useCallback(() => {
+    if (isCommentFormOpen) return;
     setSelectionInfo(null);
     setShowNonCommentableHint(false);
     if (dismissTimerRef.current) {
       clearTimeout(dismissTimerRef.current);
       dismissTimerRef.current = null;
     }
-  }, []);
+  }, [isCommentFormOpen]);
 
   useSelectionObserver(containerRef, onSelection, onClearSelection);
 
