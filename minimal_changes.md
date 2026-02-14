@@ -118,7 +118,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Show pending state on optimistic comments — `opacity: 0.6`, "Posting..." label with spinner
 - [x] Show error state by category — form reopens with body preserved for validation/transient errors; "Sign In" link for auth errors; countdown + auto-retry for rate limit
 - [x] Show rate limit warning banner — triggered when `x-ratelimit-remaining` drops below threshold (e.g., 100)
-- [ ] Show PR closed/merged banner — when SHA polling detects `state !== "open"`
+- [x] Show PR closed/merged banner — when SHA polling detects `state !== "open"`
 
 ## Accessibility (WCAG 2.1 AA)
 
