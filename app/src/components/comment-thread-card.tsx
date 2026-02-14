@@ -43,6 +43,12 @@ export interface CommentThreadCardProps {
   filePath: string;
   /** Number of replies to show before collapsing */
   collapsedReplyLimit?: number;
+  /** Whether this card is highlighted (from passage hover sync) */
+  isHighlighted?: boolean;
+  /** Called on mouse enter — for bidirectional hover sync */
+  onMouseEnter?: () => void;
+  /** Called on mouse leave — for bidirectional hover sync */
+  onMouseLeave?: () => void;
 }
 
 /** Maximum replies shown before the Collapsible kicks in */
@@ -120,6 +126,9 @@ export function CommentThreadCard({
   filePath,
   line,
   collapsedReplyLimit = DEFAULT_COLLAPSED_REPLY_LIMIT,
+  isHighlighted = false,
+  onMouseEnter,
+  onMouseLeave,
 }: CommentThreadCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -139,9 +148,12 @@ export function CommentThreadCard({
     <Card
       className={
         "py-3 gap-3 transition-colors" +
-        (isResolved ? " opacity-70" : "")
+        (isResolved ? " opacity-70" : "") +
+        (isHighlighted ? " thread-card-highlighted" : "")
       }
       data-thread-line={line}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <CardContent className="px-3 space-y-3">
         {isResolved && (
