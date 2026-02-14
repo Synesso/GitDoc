@@ -78,7 +78,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Implement `usePRComments` hook with SWR — fetches comments from API, provides `submitComment()` with optimistic `mutate()`, `rollbackOnError`, and `populateCache`
 - [x] Build `postComment()` helper with retry logic — 3 attempts with exponential backoff for transient errors; immediate throw for 422/401/404; rate-limit metadata extraction
 - [x] Build `ApiError` class — categorises errors into validation, auth, rate_limit, transient, network, unknown with status, retryAfter, isRateLimit fields
-- [ ] Implement comment draft preservation — save to `sessionStorage` keyed by `{prNumber}:{filePath}:{lineRange}` before auth redirects or page refreshes; restore and pre-fill on return
+- [x] Implement comment draft preservation — save to `sessionStorage` keyed by `{prNumber}:{filePath}:{lineRange}` before auth redirects or page refreshes; restore and pre-fill on return
 
 ## Comment Threading & Display
 

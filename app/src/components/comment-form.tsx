@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { SelectionInfo } from "@/lib/extract-selection-info";
+import {
+  saveDraft,
+  loadDraft,
+  clearDraft,
+  lineRangeKey,
+} from "@/lib/comment-drafts";
 
 interface CommentFormProps {
   /** The captured selection snapshot — provides line context and selected text */
@@ -14,6 +20,10 @@ interface CommentFormProps {
   onCancel: () => void;
   /** Whether the form is currently submitting */
   isSubmitting?: boolean;
+  /** PR number — required for draft storage key */
+  prNumber?: number;
+  /** File path — required for draft storage key */
+  filePath?: string;
 }
 
 /**
@@ -29,15 +39,38 @@ export function CommentForm({
   onSubmit,
   onCancel,
   isSubmitting = false,
+  prNumber,
+  filePath,
 }: CommentFormProps) {
-  const [body, setBody] = useState("");
+  const { startLine, endLine, selectedText } = selectionInfo;
+  const rangeKey = lineRangeKey(startLine, endLine);
+  const canPersist = prNumber != null && filePath != null;
+
+  const [body, setBody] = useState(() => {
+    if (!canPersist) return "";
+    return loadDraft(prNumber, filePath, rangeKey) ?? "";
+  });
+  const [restoredDraft, setRestoredDraft] = useState(() => {
+    if (!canPersist) return false;
+    return loadDraft(prNumber, filePath, rangeKey) != null;
+  });
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const id = useId();
 
   const inputId = `comment-input-${id}`;
   const contextId = `comment-context-${id}`;
 
-  const { startLine, endLine, selectedText } = selectionInfo;
+  // Auto-save draft on body change
+  useEffect(() => {
+    if (!canPersist) return;
+    saveDraft(prNumber, filePath, rangeKey, body);
+  }, [body, canPersist, prNumber, filePath, rangeKey]);
+
+  // Dismiss "restored" indicator once the user starts typing
+  useEffect(() => {
+    if (restoredDraft && body === "") setRestoredDraft(false);
+  }, [body, restoredDraft]);
 
   const contextText =
     selectedText.length > 50
@@ -52,8 +85,9 @@ export function CommentForm({
   const handleSubmit = useCallback(() => {
     const trimmed = body.trim();
     if (!trimmed) return;
+    if (canPersist) clearDraft(prNumber, filePath, rangeKey);
     onSubmit(trimmed);
-  }, [body, onSubmit]);
+  }, [body, onSubmit, canPersist, prNumber, filePath, rangeKey]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -95,6 +129,11 @@ export function CommentForm({
       <p id={contextId} className="sr-only">
         Commenting on {lineLabel}: &ldquo;{contextText}&rdquo;
       </p>
+      {restoredDraft && (
+        <p className="text-xs text-muted-foreground mt-1">
+          Restored unsaved comment
+        </p>
+      )}
       <div className="flex items-center justify-end gap-2 mt-2">
         <Button
           type="button"
