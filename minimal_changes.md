@@ -126,7 +126,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Implement comment thread list as WAI-ARIA feed — `role="feed"` container, `role="article"` per thread with `aria-posinset`, `aria-setsize`, `tabIndex={0}`, Page Down/Up navigation
 - [x] Add `aria-live` status region — persistent `<div aria-live="polite" className="sr-only">` for comment success/failure/loading announcements
 - [x] Apply focus-visible rings on all interactive elements — comment anchor, gutter buttons, textarea, form buttons, thread articles, collapsible triggers
-- [ ] Set `aria-busy="true"` on feed during comment loading/revalidation — prevents screen readers from announcing incomplete state
+- [x] Set `aria-busy="true"` on feed during comment loading/revalidation — prevents screen readers from announcing incomplete state
 - [ ] Use ARIA landmarks — `<header role="banner">`, `<main aria-label="Rendered document">`, `<aside role="complementary" aria-label="Comment threads">`
 - [ ] Ensure non-text contrast ≥3:1 for gutter bars and highlight backgrounds — use `blue-500` (`#3b82f6`) over `blue-400`
 

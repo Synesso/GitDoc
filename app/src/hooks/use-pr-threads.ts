@@ -63,7 +63,7 @@ export function usePRThreads(
   const baseKey = `/api/repos/${owner}/${repo}/pulls/${prNumber}/threads`;
   const key = path ? `${baseKey}?path=${encodeURIComponent(path)}` : baseKey;
 
-  const { data, error, isLoading, mutate } = useSWR<ReviewThread[]>(
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ReviewThread[]>(
     key,
     fetcher,
     {
@@ -165,6 +165,7 @@ export function usePRThreads(
   return {
     threads: data ?? [],
     isLoading,
+    isValidating,
     error,
     resolveThread,
     unresolveThread,
