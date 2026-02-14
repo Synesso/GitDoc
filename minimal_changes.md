@@ -123,7 +123,7 @@ A checklist of everything that needs to be built, derived from the design docume
 ## Accessibility (WCAG 2.1 AA)
 
 - [x] Add visually-hidden `<button>` before each commentable block — `sr-only focus:not-sr-only`, `aria-label="Add comment on lines N–M"`, provides keyboard/screen reader comment entry point
-- [ ] Implement comment thread list as WAI-ARIA feed — `role="feed"` container, `role="article"` per thread with `aria-posinset`, `aria-setsize`, `tabIndex={0}`, Page Down/Up navigation
+- [x] Implement comment thread list as WAI-ARIA feed — `role="feed"` container, `role="article"` per thread with `aria-posinset`, `aria-setsize`, `tabIndex={0}`, Page Down/Up navigation
 - [ ] Add `aria-live` status region — persistent `<div aria-live="polite" className="sr-only">` for comment success/failure/loading announcements
 - [ ] Apply focus-visible rings on all interactive elements — comment anchor, gutter buttons, textarea, form buttons, thread articles, collapsible triggers
 - [ ] Set `aria-busy="true"` on feed during comment loading/revalidation — prevents screen readers from announcing incomplete state

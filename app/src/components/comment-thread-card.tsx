@@ -61,6 +61,10 @@ export interface CommentThreadCardProps {
   onMouseLeave?: () => void;
   /** Called on click — for click-to-scroll sync (scrolls passage into view) */
   onClick?: () => void;
+  /** WAI-ARIA feed position (1-indexed) */
+  ariaPosinset?: number;
+  /** WAI-ARIA feed total size */
+  ariaSetsize?: number;
 }
 
 /** Maximum replies shown before the Collapsible kicks in */
@@ -154,6 +158,8 @@ export function CommentThreadCard({
   onMouseEnter,
   onMouseLeave,
   onClick,
+  ariaPosinset,
+  ariaSetsize,
 }: CommentThreadCardProps) {
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [isResolvedExpanded, setIsResolvedExpanded] = useState(false);
@@ -176,6 +182,7 @@ export function CommentThreadCard({
 
   if (comments.length === 0) return null;
 
+  const threadLabelId = `thread-title-${threadId}`;
   const topComment = comments[0];
   const replies = comments.slice(1);
   const hasHiddenReplies = replies.length > collapsedReplyLimit;
@@ -191,6 +198,11 @@ export function CommentThreadCard({
   if (isResolved) {
     return (
       <Card
+        role="article"
+        tabIndex={0}
+        aria-posinset={ariaPosinset}
+        aria-setsize={ariaSetsize}
+        aria-labelledby={threadLabelId}
         className={
           "py-3 gap-3 transition-colors cursor-pointer opacity-60" +
           (isHighlighted ? " thread-card-highlighted" : "")
@@ -208,6 +220,9 @@ export function CommentThreadCard({
                 className="flex items-center gap-1.5 w-full text-left"
                 onClick={(e) => e.stopPropagation()}
               >
+                <span id={threadLabelId} className="sr-only">
+                  {`Resolved thread by ${topComment.author.login} on line ${line}`}
+                </span>
                 <ChevronRight
                   className={
                     "size-3.5 text-muted-foreground shrink-0 transition-transform" +
@@ -280,6 +295,11 @@ export function CommentThreadCard({
 
   return (
     <Card
+      role="article"
+      tabIndex={0}
+      aria-posinset={ariaPosinset}
+      aria-setsize={ariaSetsize}
+      aria-labelledby={threadLabelId}
       className={
         "py-3 gap-3 transition-colors cursor-pointer" +
         (isHighlighted ? " thread-card-highlighted" : "")
@@ -291,6 +311,9 @@ export function CommentThreadCard({
       onClick={onClick}
     >
       <CardContent className="px-3 space-y-3">
+        <span id={threadLabelId} className="sr-only">
+          {`Comment by ${topComment.author.login} on line ${line}`}
+        </span>
         <CommentBody comment={topComment} />
 
         {replies.length > 0 && (
