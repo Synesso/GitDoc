@@ -10,6 +10,8 @@ interface DocumentReviewLayoutProps {
   sidebar: ReactNode;
   /** Optional header element rendered above the two-column layout */
   header?: ReactNode;
+  /** Optional mobile drawer element (MobileCommentDrawer) — shown below md breakpoint */
+  mobileDrawer?: ReactNode;
   /** Optional ref forwarded to the main content container */
   contentRef?: RefObject<HTMLElement | null>;
   /** Optional ref forwarded to the sidebar container */
@@ -30,6 +32,7 @@ export function DocumentReviewLayout({
   children,
   sidebar,
   header,
+  mobileDrawer,
   contentRef,
   sidebarRef,
 }: DocumentReviewLayoutProps) {
@@ -53,6 +56,7 @@ export function DocumentReviewLayout({
           </ScrollArea>
         </aside>
       </div>
+      {mobileDrawer}
     </div>
   );
 }

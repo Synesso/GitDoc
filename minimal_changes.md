@@ -101,9 +101,9 @@ A checklist of everything that needs to be built, derived from the design docume
 
 - [x] Build two-column desktop layout (≥768px) — rendered markdown (`flex-1`) on left, comment sidebar (`w-80 lg:w-96 border-l`, `hidden md:block`) on right
 - [x] Build header component — PR title, file selector dropdown, navigation breadcrumb; responsive condensed version for mobile
-- [ ] Wrap rendered markdown in `<article className="prose dark:prose-invert lg:prose-lg max-w-none">` — typography plugin styles with dark mode support
-- [ ] Build mobile layout (<768px) with bottom Drawer (Vaul) — full-width content, floating comment count badge, drawer with `CommentThreadList` inside `ScrollArea`
-- [ ] Build `useMediaQuery` hook — switches between desktop aside and mobile drawer based on `(min-width: 768px)`
+- [x] Wrap rendered markdown in `<article className="prose dark:prose-invert lg:prose-lg max-w-none">` — typography plugin styles with dark mode support
+- [x] Build mobile layout (<768px) with bottom Drawer (Vaul) — full-width content, floating comment count badge, drawer with `CommentThreadList` inside `ScrollArea`
+- [x] Build `useMediaQuery` hook — switches between desktop aside and mobile drawer based on `(min-width: 768px)`
 - [ ] Add inline comment indicators in left gutter on mobile — tapping opens drawer pre-scrolled to that thread
 
 ## Stale SHA Detection & Refresh
