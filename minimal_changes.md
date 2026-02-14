@@ -65,7 +65,7 @@ A checklist of everything that needs to be built, derived from the design docume
 ## Text Selection & Comment Anchoring
 
 - [x] Implement `useSelectionObserver` hook — listens to `selectionchange` + `mousedown`/`mouseup`, debounces (10ms after mouseup, 100ms for keyboard/touch), ignores intermediate drag events
-- [ ] Implement `findSourceElement()` — walks from a Text node up to the nearest ancestor with `[data-source-start]` via `closest()`
+- [x] Implement `findSourceElement()` — walks from a Text node up to the nearest ancestor with `[data-source-start]` via `closest()`
 - [ ] Implement `extractSelectionInfo()` — converts a DOM `Range` into a plain `SelectionInfo` object (startLine, endLine, selectedText, anchorTop, isCommentable, commentableLines array) before any focus shift
 - [ ] Snap selection to nearest commentable lines — when selection spans a mix of commentable and non-commentable lines, find the valid `start_line`/`line` subset for the GitHub API
 - [ ] Position comment anchor button — use `Range.getBoundingClientRect()` to place the "Add comment" button in the right margin at the selection's vertical position
