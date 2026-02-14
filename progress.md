@@ -2,6 +2,7 @@
 
 In this section very briefly (1 or 2 lines) describe what you've done in this turn.
 
+- Configured `next.config.ts` with `output: "standalone"` to enable Docker self-hosted deployment alongside Vercel. Verified production build passes.
 - Verified non-text contrast ≥3:1 for gutter bars and highlight backgrounds. All CSS in `globals.css` already uses `blue-500` (`oklch(0.623 0.214 259.815)` / `#3b82f6`) for the commentable gutter bar `border-left`, hover highlights, and focus-visible rings. No instances of `blue-400` exist. Marked task complete.
 - Added explicit `role="complementary"` to the `<aside>` in `DocumentReviewLayout`. The `<header role="banner">` and `<main aria-label="Rendered document">` landmarks were already in place from prior implementations. Verified production build passes.
 - Exposed `isValidating` from `usePRThreads` hook (SWR) so consumers can pass it to `CommentThreadList`'s `isLoading` prop to cover both initial load and background revalidation states. The `CommentThreadList` component already had `aria-busy={isLoading}` on its `role="feed"` container — the gap was that the hook only exposed `isLoading` (true only on initial fetch), not `isValidating` (true during polling/revalidation too). Verified production build passes.

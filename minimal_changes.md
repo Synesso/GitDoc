@@ -132,5 +132,5 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## Deployment
 
-- [ ] Configure `next.config.js` with `output: 'standalone'` — enables Docker self-hosted fallback alongside Vercel
+- [x] Configure `next.config.js` with `output: 'standalone'` — enables Docker self-hosted fallback alongside Vercel
 - [ ] Set up Vercel project with environment variables — `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `NEXT_PUBLIC_APP_URL`
