@@ -57,7 +57,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## Diff Parsing & Commentable Line Detection
 
-- [ ] Install `parse-diff` — parses unified diff strings from GitHub's `patch` field into structured per-line change objects
+- [x] Install `parse-diff` — parses unified diff strings from GitHub's `patch` field into structured per-line change objects
 - [ ] Build `getCommentableLines(file)` function — extracts commentable line numbers from parsed diff (`add` → `ln`, `normal` → `ln2`), returns `Set<number>` or read-only status with reason
 - [ ] Handle absent `patch` field — detect large diffs, binary files, renamed-with-no-changes; mark file as read-only with appropriate reason string
 - [ ] Mark rendered elements with `data-commentable` attribute — cross-reference each element's `[sourceStart, sourceEnd]` range against the `commentableLines` set during rendering
