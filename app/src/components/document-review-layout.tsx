@@ -2,6 +2,7 @@
 
 import { type ReactNode, type RefObject } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { StatusAnnouncer } from "@/components/status-announcer";
 
 interface DocumentReviewLayoutProps {
   /** Content for the main area (rendered markdown, comment anchor, etc.) */
@@ -38,6 +39,7 @@ export function DocumentReviewLayout({
 }: DocumentReviewLayoutProps) {
   return (
     <div className="flex flex-col min-h-screen">
+      <StatusAnnouncer />
       {header}
       <div className="flex flex-1 overflow-hidden">
         <main
