@@ -52,7 +52,7 @@ A checklist of everything that needs to be built, derived from the design docume
 - [x] Write `rehype-source-lines` plugin — walks the hast tree and copies `position.start.line` / `position.end.line` into `data-source-start` / `data-source-end` attributes on every element
 - [x] Write `rehype-code-source-lines` plugin — annotates per-line `<span class="code-line">` wrappers inside code blocks with the correct original markdown source line number (fenceStartLine + 1 + index)
 - [x] Install a code line-wrapping plugin (`rehype-prism-plus` or `rehype-highlight` + `rehype-highlight-code-lines`) — splits `<pre><code>` text nodes into per-line wrapper elements
-- [ ] Configure the rehype plugin pipeline in the correct order: `rehype-source-lines` → syntax highlighter → line wrapper → `rehype-code-source-lines`
+- [x] Configure the rehype plugin pipeline in the correct order: `rehype-source-lines` → syntax highlighter → line wrapper → `rehype-code-source-lines`
 - [ ] Write `makeUrlTransform()` function — rewrites relative image paths to `raw.githubusercontent.com/{owner}/{repo}/{headSha}/...` and relative `.md` links to GitHub blob view
 
 ## Diff Parsing & Commentable Line Detection
