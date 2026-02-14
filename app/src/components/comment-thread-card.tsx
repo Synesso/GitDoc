@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp, ChevronRight, ExternalLink, Undo2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronUp, ChevronRight, ExternalLink, Loader2, Undo2 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ export interface ThreadComment {
   outdated?: boolean;
   author: { login: string; avatarUrl: string };
   diffHunk?: string;
+  /** Client-side flag for optimistic (not-yet-confirmed) comments */
+  isPending?: boolean;
 }
 
 /** Props for the CommentThreadCard component */
@@ -90,7 +92,7 @@ function formatRelativeTime(dateStr: string): string {
 
 function CommentBody({ comment }: { comment: ThreadComment }) {
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2${comment.isPending ? " opacity-60" : ""}`}>
       <Avatar size="sm" className="mt-0.5 shrink-0">
         <AvatarImage src={comment.author.avatarUrl} alt={comment.author.login} />
         <AvatarFallback>
@@ -102,13 +104,20 @@ function CommentBody({ comment }: { comment: ThreadComment }) {
           <span className="text-sm font-medium truncate">
             {comment.author.login}
           </span>
-          <time
-            dateTime={comment.createdAt}
-            className="text-xs text-muted-foreground shrink-0"
-            title={new Date(comment.createdAt).toLocaleString()}
-          >
-            {formatRelativeTime(comment.createdAt)}
-          </time>
+          {comment.isPending ? (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <Loader2 className="size-3 animate-spin" />
+              Posting…
+            </span>
+          ) : (
+            <time
+              dateTime={comment.createdAt}
+              className="text-xs text-muted-foreground shrink-0"
+              title={new Date(comment.createdAt).toLocaleString()}
+            >
+              {formatRelativeTime(comment.createdAt)}
+            </time>
+          )}
         </div>
         <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
           {comment.body}

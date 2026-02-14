@@ -10,6 +10,8 @@ export interface ThreadComment {
   outdated: boolean;
   author: { login: string; avatarUrl: string };
   diffHunk?: string;
+  /** Client-side flag for optimistic (not-yet-confirmed) comments */
+  isPending?: boolean;
 }
 
 /** Shape of a thread from GET /api/repos/.../threads */

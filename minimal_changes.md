@@ -115,7 +115,7 @@ A checklist of everything that needs to be built, derived from the design docume
 
 ## Error Handling UI
 
-- [ ] Show pending state on optimistic comments — `opacity: 0.6`, "Posting..." label with spinner
+- [x] Show pending state on optimistic comments — `opacity: 0.6`, "Posting..." label with spinner
 - [ ] Show error state by category — form reopens with body preserved for validation/transient errors; "Sign In" link for auth errors; countdown + auto-retry for rate limit
 - [ ] Show rate limit warning banner — triggered when `x-ratelimit-remaining` drops below threshold (e.g., 100)
 - [ ] Show PR closed/merged banner — when SHA polling detects `state !== "open"`
