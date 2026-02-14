@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronRight, ExternalLink } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -134,25 +134,103 @@ export function CommentThreadCard({
   onMouseLeave,
   onClick,
 }: CommentThreadCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [isResolvedExpanded, setIsResolvedExpanded] = useState(false);
 
   if (comments.length === 0) return null;
 
   const topComment = comments[0];
   const replies = comments.slice(1);
   const hasHiddenReplies = replies.length > collapsedReplyLimit;
-  const visibleReplies = hasHiddenReplies && !isOpen
+  const visibleReplies = hasHiddenReplies && !isReplyOpen
     ? replies.slice(-collapsedReplyLimit)
     : replies;
   const hiddenCount = hasHiddenReplies ? replies.length - collapsedReplyLimit : 0;
 
   const githubUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files#diff-${encodeFilePath(filePath)}R${line}`;
 
+  // Resolved threads are collapsed by default — show only the badge header,
+  // expand on click to reveal full thread history.
+  if (isResolved) {
+    return (
+      <Card
+        className={
+          "py-3 gap-3 transition-colors cursor-pointer opacity-60" +
+          (isHighlighted ? " thread-card-highlighted" : "")
+        }
+        data-thread-id={threadId}
+        data-thread-line={line}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onClick={onClick}
+      >
+        <CardContent className="px-3">
+          <Collapsible open={isResolvedExpanded} onOpenChange={setIsResolvedExpanded}>
+            <CollapsibleTrigger asChild>
+              <button
+                className="flex items-center gap-1.5 w-full text-left"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ChevronRight
+                  className={
+                    "size-3.5 text-muted-foreground shrink-0 transition-transform" +
+                    (isResolvedExpanded ? " rotate-90" : "")
+                  }
+                />
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  Resolved
+                </Badge>
+                {resolvedBy && (
+                  <Avatar size="sm" className="size-4 shrink-0">
+                    <AvatarImage src={resolvedBy.avatarUrl} alt={resolvedBy.login} />
+                    <AvatarFallback className="text-[8px]">
+                      {resolvedBy.login.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                {resolvedBy && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    by {resolvedBy.login}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                  {comments.length} {comments.length === 1 ? "comment" : "comments"}
+                </span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-3">
+              <CommentBody comment={topComment} />
+
+              {replies.length > 0 && (
+                <div className="border-l-2 border-muted pl-2 space-y-3">
+                  {replies.map((reply) => (
+                    <CommentBody key={reply.databaseId} comment={reply} />
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <a
+                  href={githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Open in GitHub
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card
       className={
         "py-3 gap-3 transition-colors cursor-pointer" +
-        (isResolved ? " opacity-70" : "") +
         (isHighlighted ? " thread-card-highlighted" : "")
       }
       data-thread-id={threadId}
@@ -162,32 +240,19 @@ export function CommentThreadCard({
       onClick={onClick}
     >
       <CardContent className="px-3 space-y-3">
-        {isResolved && (
-          <div className="flex items-center gap-1.5">
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              Resolved
-            </Badge>
-            {resolvedBy && (
-              <span className="text-xs text-muted-foreground">
-                by {resolvedBy.login}
-              </span>
-            )}
-          </div>
-        )}
-
         <CommentBody comment={topComment} />
 
         {replies.length > 0 && (
           <div className="border-l-2 border-muted pl-2 space-y-3">
             {hasHiddenReplies && (
-              <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+              <Collapsible open={isReplyOpen} onOpenChange={setIsReplyOpen}>
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 text-xs text-muted-foreground px-1"
                   >
-                    {isOpen ? (
+                    {isReplyOpen ? (
                       <>
                         <ChevronUp className="size-3 mr-1" />
                         Hide replies
