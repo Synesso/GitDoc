@@ -107,7 +107,7 @@ export function MobileCommentIndicators({
       {positions.map((pos) => (
         <button
           key={pos.threadId}
-          className="absolute left-0 pointer-events-auto flex items-center gap-0.5 rounded-r-md bg-primary/90 text-primary-foreground px-1 py-0.5 text-[10px] font-medium shadow-sm hover:bg-primary transition-colors z-10"
+          className="mobile-indicator-btn absolute left-0 pointer-events-auto flex items-center gap-0.5 rounded-r-md bg-primary/90 text-primary-foreground px-1 py-0.5 text-[10px] font-medium shadow-sm hover:bg-primary transition-colors z-10"
           style={{ top: pos.top }}
           onClick={() => onIndicatorTap(pos.threadId)}
           aria-label={`${pos.commentCount} ${pos.commentCount === 1 ? "comment" : "comments"}`}

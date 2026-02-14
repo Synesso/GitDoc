@@ -219,7 +219,7 @@
   border-width: 0;
 }
 
-.comment-trigger-btn:focus {
+.comment-trigger-btn:focus-visible {
   position: relative;
   width: auto;
   height: auto;
@@ -237,6 +237,31 @@
   cursor: pointer;
 }
 
-.dark .comment-trigger-btn:focus {
+.dark .comment-trigger-btn:focus-visible {
   background-color: oklch(0.623 0.214 259.815 / 25%);
+}
+
+/* Focus-visible rings for thread article cards (role="article" with tabIndex)
+   and other custom interactive elements without shadcn Button styling. */
+[role="article"][tabindex]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Collapsible trigger buttons and mobile indicator buttons — bare <button>
+   elements that don't use shadcn Button and thus lack built-in focus rings. */
+[data-slot="collapsible-trigger"]:focus-visible,
+.mobile-indicator-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Inline anchor links (e.g., "Open in GitHub") */
+a.inline-flex:focus-visible,
+nav[aria-label="Breadcrumb"] a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.125rem;
 }
