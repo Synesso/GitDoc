@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypePrismPlus from "rehype-prism-plus";
@@ -22,8 +22,8 @@ interface MarkdownRendererProps {
   filePath?: string;
   /** Set of source line numbers that are commentable (appear in the PR diff). When provided, elements overlapping these lines get `data-commentable="true"`. */
   commentableLines?: Set<number>;
-  /** Called when a keyboard/screen-reader user activates a comment trigger button. Receives the start and end source line numbers. */
-  onCommentTrigger?: (startLine: number, endLine: number) => void;
+  /** Called when a user activates commenting on a block element. Receives the start and end source line numbers, and the element's top offset relative to the article container. */
+  onCommentTrigger?: (startLine: number, endLine: number, anchorTop: number) => void;
 }
 
 /**
@@ -68,24 +68,54 @@ export function MarkdownRenderer({
     return plugins;
   }, [commentableLines]);
 
+  const articleRef = useRef<HTMLElement>(null);
+
+  const getAnchorTop = useCallback((el: HTMLElement): number => {
+    const article = articleRef.current;
+    if (!article) return 0;
+    const elRect = el.getBoundingClientRect();
+    const articleRect = article.getBoundingClientRect();
+    return elRect.top - articleRect.top + article.scrollTop;
+  }, []);
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
-      const target = e.target as HTMLElement;
       if (!onCommentTrigger) return;
-      if (target.tagName !== "BUTTON") return;
-      if (!target.hasAttribute("data-comment-trigger")) return;
 
-      const start = Number(target.getAttribute("data-trigger-start"));
-      const end = Number(target.getAttribute("data-trigger-end"));
+      const target = e.target as HTMLElement;
+
+      // Hidden trigger button (keyboard/sr path)
+      if (target.tagName === "BUTTON" && target.hasAttribute("data-comment-trigger")) {
+        const start = Number(target.getAttribute("data-trigger-start"));
+        const end = Number(target.getAttribute("data-trigger-end"));
+        if (!isNaN(start) && !isNaN(end)) {
+          const triggerEl = target.nextElementSibling as HTMLElement | null;
+          onCommentTrigger(start, end, getAnchorTop(triggerEl ?? target));
+        }
+        return;
+      }
+
+      // Click on any commentable element (or child of one)
+      const commentableEl = target.closest("[data-commentable='true']") as HTMLElement | null;
+      if (!commentableEl) return;
+
+      // Don't hijack text selection or link clicks
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) return;
+      if ((e.target as HTMLElement).closest("a")) return;
+
+      const start = Number(commentableEl.getAttribute("data-source-start"));
+      const end = Number(commentableEl.getAttribute("data-source-end"));
       if (!isNaN(start) && !isNaN(end)) {
-        onCommentTrigger(start, end);
+        onCommentTrigger(start, end, getAnchorTop(commentableEl));
       }
     },
-    [onCommentTrigger],
+    [onCommentTrigger, getAnchorTop],
   );
 
   return (
     <article
+      ref={articleRef}
       className="prose dark:prose-invert lg:prose-lg max-w-none"
       onClick={handleClick}
     >

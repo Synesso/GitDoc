@@ -182,26 +182,49 @@
   background-color: oklch(0.3 0.05 250 / 20%);
 }
 
-/* Left-margin gutter bar on commentable elements — indicates this passage
-   is part of the PR diff and can receive review comments. */
-[data-commentable="true"] {
-  border-left: 3px solid oklch(0.623 0.214 259.815); /* blue-500 #3b82f6, ≥3:1 contrast */
+/* Elements with an active comment thread: subtle left border accent */
+.has-thread-accent {
+  border-left: 3px solid oklch(0.623 0.214 259.815 / 40%);
   padding-left: 0.75rem;
+  background-color: oklch(0.95 0.03 90 / 30%);
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 
-.dark [data-commentable="true"] {
-  border-left-color: oklch(0.623 0.214 259.815); /* same blue-500 — sufficient contrast on dark bg */
+.dark .has-thread-accent {
+  border-left-color: oklch(0.623 0.214 259.815 / 30%);
+  background-color: oklch(0.4 0.03 90 / 15%);
 }
 
-/* Hover highlight on commentable elements — reinforces interactivity.
-   Non-commentable elements get no hover effect. */
-[data-commentable="true"]:hover {
-  background-color: oklch(0.623 0.214 259.815 / 8%); /* blue-500 at 8% opacity */
+/* Commentable block elements: hover affordance showing they are clickable */
+[data-commentable="true"] {
+  position: relative;
+  cursor: pointer;
+  border-radius: 0.25rem;
   transition: background-color 150ms ease;
 }
 
+[data-commentable="true"]:hover {
+  background-color: oklch(0.623 0.214 259.815 / 8%);
+}
+
 .dark [data-commentable="true"]:hover {
-  background-color: oklch(0.623 0.214 259.815 / 12%); /* slightly more visible on dark bg */
+  background-color: oklch(0.623 0.214 259.815 / 12%);
+}
+
+/* Gutter comment icon on hover */
+[data-commentable="true"]::before {
+  content: "💬";
+  position: absolute;
+  left: -2rem;
+  top: 0.125rem;
+  font-size: 0.875rem;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}
+
+[data-commentable="true"]:hover::before {
+  opacity: 0.6;
 }
 
 /* Visually-hidden comment trigger buttons injected before each
@@ -252,7 +275,8 @@
 /* Collapsible trigger buttons and mobile indicator buttons — bare <button>
    elements that don't use shadcn Button and thus lack built-in focus rings. */
 [data-slot="collapsible-trigger"]:focus-visible,
-.mobile-indicator-btn:focus-visible {
+.mobile-indicator-btn:focus-visible,
+.inline-indicator-btn:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
   border-radius: 0.25rem;
