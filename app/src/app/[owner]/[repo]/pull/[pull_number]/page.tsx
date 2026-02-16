@@ -168,7 +168,7 @@ export default function PullRequestPage() {
   useEffect(() => {
     const container = contentRef.current;
     if (!container || commentThreads.length === 0) {
-      setPositionedThreads([]);
+      setPositionedThreads(prev => prev.length === 0 ? prev : []);
       return;
     }
 
@@ -379,7 +379,7 @@ export default function PullRequestPage() {
             return (
               <div
                 key={thread.graphqlId}
-                className="absolute left-0 right-0 px-3"
+                className="absolute left-0 right-0 px-2"
                 style={{ top: positioned.actualY }}
                 data-positioned-thread-id={thread.graphqlId}
                 ref={measureCardHeight}

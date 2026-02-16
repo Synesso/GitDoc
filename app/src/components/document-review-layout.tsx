@@ -25,7 +25,7 @@ interface DocumentReviewLayoutProps {
  *
  * - Top: optional header bar (PR info, file selector)
  * - Left: rendered markdown content (`flex-1`, padded)
- * - Right: comment sidebar (`w-80 lg:w-96`, border-left, hidden below `md`)
+ * - Right: comment sidebar (`w-[22rem] lg:w-[26rem] xl:w-[30rem]`, border-left, hidden below `md`)
  *
  * Both columns share a single scroll container so that sidebar thread cards
  * can be vertically aligned with the content they reference.
@@ -50,14 +50,14 @@ export function DocumentReviewLayout({
         <div className="flex min-h-full">
           <main
             ref={contentRef}
-            className="relative flex-1 p-6"
+            className="relative flex-1 min-w-0 p-6"
             aria-label="Rendered document"
           >
             {children}
           </main>
           <aside
             ref={sidebarRef}
-            className="hidden md:block w-80 lg:w-96 border-l relative"
+            className="hidden md:block w-[22rem] lg:w-[26rem] xl:w-[30rem] border-l relative shrink-0"
             role="complementary"
             aria-label="Comment threads"
           >
