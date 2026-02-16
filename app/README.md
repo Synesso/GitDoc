@@ -1,35 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitDoc
 
-## Getting Started
+A web application for reviewing markdown files in GitHub Pull Requests. GitDoc renders changed `.md` files as they will appear to readers and lets reviewers leave comments that are persisted as native GitHub PR line comments.
 
-First, run the development server:
+## Local Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v20+)
+- npm
+
+### 1. Set Up a GitHub OAuth App
+
+1. Go to [GitHub Developer Settings → OAuth Apps → New OAuth App](https://github.com/settings/developers).
+2. Fill in the form:
+   - **Application name**: `GitDoc (dev)` (or anything you like)
+   - **Homepage URL**: `http://localhost:3000`
+   - **Authorization callback URL**: `http://localhost:3000/api/auth/callback`
+3. Click **Register application**.
+4. On the next page, copy the **Client ID**.
+5. Click **Generate a new client secret** and copy the secret immediately (it is only shown once).
+
+### 2. Configure Environment Variables
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Edit `.env.local` and fill in the values:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+GITHUB_CLIENT_ID=<your OAuth App client ID>
+GITHUB_CLIENT_SECRET=<your OAuth App client secret>
+SESSION_SECRET=<random 32+ character hex string>
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Generate a session secret with:
 
-## Learn More
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Install Dependencies and Run
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deploy on Vercel
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start the development server with hot reload |
+| `npm run build` | Create a production build |
+| `npm run start` | Serve the production build |
+| `npm run lint` | Run ESLint |
+
+## Deployment
+
+See the [Vercel deployment instructions](#deploy-on-vercel) below.
+
+### Deploy on Vercel
 
 1. **Create a GitHub OAuth App** at <https://github.com/settings/developers>:
    - Set **Authorization callback URL** to `https://<your-domain>/api/auth/callback`
