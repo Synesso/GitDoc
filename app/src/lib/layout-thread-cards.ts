@@ -36,7 +36,7 @@ export function getThreadAnchorY(
     if (start <= targetLine && targetLine <= end) {
       const rect = el.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      return rect.top - containerRect.top + rect.height / 2;
+      return rect.top - containerRect.top;
     }
   }
 

@@ -151,7 +151,6 @@ export function CommentThreadCard({
   owner,
   repo,
   prNumber,
-  filePath,
   line,
   collapsedReplyLimit = DEFAULT_COLLAPSED_REPLY_LIMIT,
   isHighlighted = false,
@@ -191,7 +190,7 @@ export function CommentThreadCard({
     : replies;
   const hiddenCount = hasHiddenReplies ? replies.length - collapsedReplyLimit : 0;
 
-  const githubUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files#diff-${encodeFilePath(filePath)}R${line}`;
+  const githubUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}#discussion_r${topComment.databaseId}`;
 
   // Resolved threads are collapsed by default — show only the badge header,
   // expand on click to reveal full thread history.
@@ -382,14 +381,4 @@ export function CommentThreadCard({
   );
 }
 
-/**
- * Encodes a file path for use in GitHub's diff fragment identifier.
- * GitHub uses a hex-encoded hash-like scheme, but for simplicity we
- * just use the path directly — GitHub will scroll to the file.
- */
-function encodeFilePath(path: string): string {
-  // GitHub uses a hex encoding of the file path for anchor links
-  return Array.from(new TextEncoder().encode(path))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+
